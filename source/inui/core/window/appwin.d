@@ -71,7 +71,6 @@ public:
         this.height_ = height;
 
         // Set up OpenGL context
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GLcontextFlag.SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GLprofile.SDL_GL_CONTEXT_PROFILE_CORE);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
@@ -90,7 +89,7 @@ public:
             SDL_WINDOWPOS_UNDEFINED, 
             width, 
             height, 
-            SDL_WindowFlags.SDL_WINDOW_OPENGL | SDL_WindowFlags.SDL_WINDOW_RESIZABLE
+            SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
         );
 
         // Create context and load GL functions
@@ -116,7 +115,9 @@ public:
         ctx = igCreateContext();
         io = igGetIO();
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
-        io.ConfigFlags |= ImGuiConfigFlags.ViewportsEnable;
+        version(UIViewports) {
+            io.ConfigFlags |= ImGuiConfigFlags.ViewportsEnable;
+        }
         io.ConfigWindowsResizeFromEdges = true;
         
         // Init ImGui for SDL2 & OpenGL
@@ -211,13 +212,16 @@ public:
         // Run UI Render
         ImGuiOpenGLBackend.render_draw_data(igGetDrawData());
 
-        // Handle viewports
-        if (io.ConfigFlags & ImGuiConfigFlags.ViewportsEnable) {
-            SDL_Window* currentWindow = SDL_GL_GetCurrentWindow();
-            SDL_GLContext currentCtx = SDL_GL_GetCurrentContext();
-            igUpdatePlatformWindows();
-            igRenderPlatformWindowsDefault();
-            SDL_GL_MakeCurrent(currentWindow, currentCtx);
+        version(UIViewports) {
+            
+            // Handle viewports
+            if (io.ConfigFlags & ImGuiConfigFlags.ViewportsEnable) {
+                SDL_Window* currentWindow = SDL_GL_GetCurrentWindow();
+                SDL_GLContext currentCtx = SDL_GL_GetCurrentContext();
+                igUpdatePlatformWindows();
+                igRenderPlatformWindowsDefault();
+                SDL_GL_MakeCurrent(currentWindow, currentCtx);
+            }
         }
 
         // Swap this window

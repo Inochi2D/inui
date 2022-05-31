@@ -4,8 +4,8 @@
     
     Authors: Luna Nielsen
 */
-module inui.widgets.input;
-import inui.widgets.dummy;
+module inui.widgets.im.input;
+import inui.widgets.im.dummy;
 
 import core.memory : GC;
 import bindbc.imgui;
@@ -20,14 +20,14 @@ private {
 /**
     D compatible text input
 */
-bool inInputText(const(char)* wId, ref string buffer, ImGuiInputTextFlags flags = ImGuiInputTextFlags.None) {
-    return inInputText(wId, inAvailableSpace().x, buffer, flags);
+bool uiImInputText(const(char)* wId, ref string buffer, ImGuiInputTextFlags flags = ImGuiInputTextFlags.None) {
+    return uiImInputText(wId, uiImAvailableSpace().x, buffer, flags);
 }
 
 /**
     D compatible text input
 */
-bool inInputText(const(char)* wId, float width, ref string buffer, ImGuiInputTextFlags flags = ImGuiInputTextFlags.None) {
+bool uiImInputText(const(char)* wId, float width, ref string buffer, ImGuiInputTextFlags flags = ImGuiInputTextFlags.None) {
     auto id = igGetID(wId);
     auto storage = igGetStateStorage();
 
@@ -81,4 +81,11 @@ bool inInputText(const(char)* wId, float width, ref string buffer, ImGuiInputTex
 
     SDL_SetTextInputRect(&rect);
     return false;
+}
+
+/**
+    A button
+*/
+bool uiImButton(const(char)* text, ImVec2 size = ImVec2(0, 0)) {
+    return igButton(text, size);
 }

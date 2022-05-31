@@ -14,3 +14,4 @@ inui-test-*
 *.obj
 *.lst
 out/
+dub.selections.json
