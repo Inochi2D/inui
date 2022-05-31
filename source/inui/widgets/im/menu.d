@@ -53,6 +53,6 @@ void uiImEndMenu() {
 /**
     Menu item
 */
-bool uiImMenuItem(const(char)* label, const(char)* shortcut, bool selected = false, bool enabled = true) {
+bool uiImMenuItem(const(char)* label, const(char)* shortcut = "", bool selected = false, bool enabled = true) {
     return igMenuItem(label, shortcut, selected, enabled);
 }

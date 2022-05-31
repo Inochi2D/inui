@@ -10,6 +10,7 @@ import inui.widgets.im.dummy;
 import core.memory : GC;
 import bindbc.imgui;
 import bindbc.sdl;
+import inmath.linalg;
 
 private {
     struct Str {
@@ -86,6 +87,6 @@ bool uiImInputText(const(char)* wId, float width, ref string buffer, ImGuiInputT
 /**
     A button
 */
-bool uiImButton(const(char)* text, ImVec2 size = ImVec2(0, 0)) {
-    return igButton(text, size);
+bool uiImButton(const(char)* text, vec2 size = vec2(0)) {
+    return igButton(text, ImVec2(size.x, size.y));
 }

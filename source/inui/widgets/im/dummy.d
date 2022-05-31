@@ -7,21 +7,22 @@
 module inui.widgets.im.dummy;
 import bindbc.imgui;
 import std.math : abs;
+import inmath.linalg;
 
 /**
     More advanced dummy widget
 */
-void uiImDummy(ImVec2 size) {
-    ImVec2 avail = uiImAvailableSpace();
+void uiImDummy(vec2 size) {
+    vec2 avail = uiImAvailableSpace();
     if (size.x <= 0) size.x = avail.x - abs(size.x);
     if (size.y <= 0) size.y = avail.y - abs(size.y);
-    igDummy(size);
+    igDummy(*(cast(ImVec2*)&size));
 }
 
 /**
     A same-line spacer
 */
-void uiImSpacer(ImVec2 size) {
+void uiImSpacer(vec2 size) {
     igSameLine(0, 0);
     uiImDummy(size);
 }
@@ -29,18 +30,18 @@ void uiImSpacer(ImVec2 size) {
 /**
     Gets available space
 */
-ImVec2 uiImAvailableSpace() {
-    ImVec2 avail;
-    igGetContentRegionAvail(&avail);
+vec2 uiImAvailableSpace() {
+    vec2 avail;
+    igGetContentRegionAvail(cast(ImVec2*)&avail);
     return avail;
 }
 
 /**
     Measures a string in pixels
 */
-ImVec2 uiImMeasureString(string text) {
-    ImVec2 strLen;
-    igCalcTextSize(&strLen, text.ptr, text.ptr+text.length);
-    return strLen;
+vec2 uiImMeasureString(string text) {
+    vec2 strLen;
+    igCalcTextSize(cast(ImVec2*)&strLen, text.ptr, text.ptr+text.length);
+    return vec2(strLen.x, strLen.y);
 }
 
