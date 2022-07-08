@@ -20,7 +20,7 @@ void inInitUI() {
     SDL_Init(SDL_INIT_EVERYTHING);
 
     // Load imgui
-    loadImGui();
+    version(BindImGui_Dynamic) loadImGui();
 
     // Init settings store
     inSettingsLoad();

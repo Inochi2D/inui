@@ -7,6 +7,7 @@
 module inui.core.window.appwin;
 import inui.core.window;
 import inui.core.app;
+import inui.core.font;
 
 import bindbc.sdl;
 import bindbc.opengl;
@@ -218,6 +219,8 @@ public:
 
         this.initStyling();
         this.initDarkMode();
+
+        inInitFonts();
     }
 
     /**
