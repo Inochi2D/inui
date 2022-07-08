@@ -4,7 +4,7 @@
     
     Authors: Luna Nielsen
 */
-module inui.widgets.im.dummy;
+module inui.widgets.dummy;
 import bindbc.imgui;
 import std.math : abs;
 import inmath.linalg;

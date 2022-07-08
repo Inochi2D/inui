@@ -12,6 +12,12 @@ public import inui.core.window;
 public import inui.core.app;
 public import inui.core.path;
 public import inui.core.settings;
+import inmath;
+
+private {
+    double lastTime;
+    double currTime;
+}
 
 void inInitUI() {
     
@@ -27,8 +33,23 @@ void inInitUI() {
 }
 
 /**
+    Updates time, called internally by inui
+*/
+void inUpdateTime() {
+    lastTime = currTime;
+    currTime = cast(double)SDL_GetTicks64()*0.001;
+}
+
+/**
     Returns the current timestep of the app
 */
 double inGetTime() {
-    return (cast(double)SDL_GetPerformanceCounter() / cast(double)SDL_GetPerformanceFrequency())*0.001;
+    return currTime;
+}
+
+/**
+    Gets delta time
+*/
+double inGetDeltaTime() {
+    return abs(lastTime-currTime);
 }

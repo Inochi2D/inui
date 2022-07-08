@@ -4,8 +4,8 @@
     
     Authors: Luna Nielsen
 */
-module inui.widgets.im.input;
-import inui.widgets.im.dummy;
+module inui.widgets.input;
+import inui.widgets.dummy;
 
 import core.memory : GC;
 import bindbc.imgui;

@@ -4,7 +4,7 @@
     
     Authors: Luna Nielsen
 */
-module inui.widgets.im.menu;
+module inui.widgets.menu;
 import bindbc.imgui;
 import std.string;
 

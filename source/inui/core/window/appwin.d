@@ -8,6 +8,7 @@ module inui.core.window.appwin;
 import inui.core.window;
 import inui.core.app;
 import inui.core.font;
+import inui.core;
 
 import bindbc.sdl;
 import bindbc.opengl;
@@ -236,6 +237,7 @@ public:
     */
     final
     void update() {
+        inUpdateTime();
 
         // Update important SDL events
         string[] files;
@@ -296,6 +298,12 @@ public:
             // update
             this.onUpdate();
 
+            // Update window list
+            foreach(win; inWindowListGet()) {
+                win.onEarlyUpdate();
+                win.onUpdate();
+            }
+
         // Rendering
         igRender();
 
@@ -324,12 +332,6 @@ public:
 
         // Swap this window
         SDL_GL_SwapWindow(window);
-
-        // Update window list
-        foreach(win; inWindowListGet()) {
-            win.onEarlyUpdate();
-            win.onUpdate();
-        }
     }
 
     /**
@@ -346,6 +348,7 @@ public:
     override
     void close() {
         done = true;
+        onClosed();
     }
 
     /**

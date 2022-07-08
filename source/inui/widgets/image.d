@@ -1,4 +1,4 @@
-module inui.widgets.im.image;
+module inui.widgets.image;
 import bindbc.imgui;
 import bindbc.opengl;
 import inmath.linalg;
