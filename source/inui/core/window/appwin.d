@@ -1,5 +1,5 @@
 /*
-    Copyright © 2020, Inochi2D Project
+    Copyright © 2022, Inochi2D Project
     Distributed under the 2-Clause BSD License, see LICENSE file.
     
     Authors: Luna Nielsen
@@ -9,6 +9,7 @@ import inui.core.window;
 import inui.core.app;
 import inui.core.font;
 import inui.core;
+import inui.panel;
 
 import bindbc.sdl;
 import bindbc.opengl;
@@ -298,11 +299,15 @@ public:
             // update
             this.onUpdate();
 
+            // Update panels
+            inUpdatePanels();
+
             // Update window list
             foreach(win; inWindowListGet()) {
                 win.onEarlyUpdate();
                 win.onUpdate();
             }
+
 
         // Rendering
         igRender();
