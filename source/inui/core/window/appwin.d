@@ -10,6 +10,7 @@ import inui.core.app;
 import inui.core.font;
 import inui.core;
 import inui.panel;
+import inui.widgets;
 
 import bindbc.sdl;
 import bindbc.opengl;
@@ -222,7 +223,8 @@ public:
         this.initStyling();
         this.initDarkMode();
 
-        inInitFonts();
+        inInitFonts(); 
+        uiImInitDialogs();
     }
 
     /**
@@ -238,6 +240,7 @@ public:
     */
     final
     void update() {
+
         inUpdateTime();
 
         // Update important SDL events
@@ -302,6 +305,8 @@ public:
             // Update panels
             inUpdatePanels();
 
+            uiImRenderDialogs();
+
             // Update window list
             foreach(win; inWindowListGet()) {
                 win.onEarlyUpdate();
@@ -337,6 +342,9 @@ public:
 
         // Swap this window
         SDL_GL_SwapWindow(window);
+
+        // Clean up dialog windows
+        uiImCleanupDialogs();
     }
 
     /**

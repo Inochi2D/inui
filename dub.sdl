@@ -3,6 +3,7 @@ description "Inochi2D UI Library"
 authors "Luna"
 copyright "Copyright © 2022, Luna"
 license "BSD 2-clause"
+dependency "inochi2d" version="~>0.7.2"
 dependency "bindbc-opengl" version="~>1.0.0"
 dependency "tinyfiledialogs" version="~>0.10.1"
 dependency "bindbc-sdl" version="~>1.1.2"
@@ -11,21 +12,21 @@ dependency "i18n-d" version="~>1.0.0"
 dependency "inmath" version="~>1.0.3"
 dependency "fghj" version="~>1.0.0"
 targetPath "out/"
+copyFiles "res/*-LICENSE"
 versions "USE_SDL2" "USE_GL" "SDL_208" "USE_OpenGL3"
 stringImportPaths "res/"
-copyFiles "res/*-LICENSE"
-
 configuration "windows" {
 	platforms "windows"
+	targetType "library"
 	subConfiguration "bindbc-imgui" "static_staticCRT"
 }
-
 configuration "macOS" {
 	platforms "osx"
+	targetType "library"
 	subConfiguration "bindbc-imgui" "dynamic_dynamicCRT"
 }
-
 configuration "linux" {
 	platforms "linux"
+	targetType "library"
 	subConfiguration "bindbc-imgui" "static_dynamicCRT"
 }
