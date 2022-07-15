@@ -90,8 +90,8 @@ string inGetAppConfigPath() {
         // used .inochi-creator there, but that's not correct
         // This code will ensure we still use old config if it's there.
         // Otherwise we create config for the *correct* path
-        string fdir = buildPath(appDataDir, "."~APP_FOLDER_NAME);
-        if (!exists(fdir)) fdir = buildPath(appDataDir, APP_FOLDER_NAME);
+        string fdir = buildPath(appDataDir, "."~inGetApplication().configDirName);
+        if (!exists(fdir)) fdir = buildPath(appDataDir, inGetApplication().configDirName);
         appDataDir = fdir;
         return appDataDir;
     } else {
