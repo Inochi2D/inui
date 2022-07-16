@@ -13,6 +13,8 @@ public import inui.core.window.appwin;
 */
 abstract class InWindow {
 protected:
+    bool showUI = true;
+    
     void onOpened() { }
     void onClosed() { }
     void onResized(int width, int height) { }

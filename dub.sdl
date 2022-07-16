@@ -19,7 +19,7 @@ stringImportPaths "res/"
 configuration "windows" {
 	platforms "windows"
 	targetType "library"
-	subConfiguration "bindbc-imgui" "static_staticCRT"
+	subConfiguration "bindbc-imgui" "dynamic_dynamicCRT"
 }
 configuration "macOS" {
 	platforms "osx"

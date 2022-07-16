@@ -32,6 +32,8 @@ private:
 
     int width_, height_;
 
+    bool show = true;
+
 protected:
 
     /**
@@ -224,6 +226,7 @@ public:
         this.initDarkMode();
 
         inInitFonts(); 
+        inInitPanels();
         uiImInitDialogs();
     }
 
@@ -285,6 +288,7 @@ public:
         ImGuiOpenGLBackend.new_frame();
         ImGui_ImplSDL2_NewFrame();
         igNewFrame();
+        
 
             // Allow dragging files in to the main window
             if (files.length > 0) {
@@ -299,18 +303,23 @@ public:
                 }
             }
 
+            igDockSpaceOverViewport(null, ImGuiDockNodeFlags.PassthruCentralNode, null);
+
             // update
             this.onUpdate();
 
-            // Update panels
-            inUpdatePanels();
+            if (showUI) {
 
-            uiImRenderDialogs();
+                // Update panels
+                inUpdatePanels();
 
-            // Update window list
-            foreach(win; inWindowListGet()) {
-                win.onEarlyUpdate();
-                win.onUpdate();
+                uiImRenderDialogs();
+
+                // Update window list
+                foreach(win; inWindowListGet()) {
+                    win.onEarlyUpdate();
+                    win.onUpdate();
+                }
             }
 
 

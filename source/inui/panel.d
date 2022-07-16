@@ -146,7 +146,7 @@ void inUpdatePanels() {
 }
 
 /**
-    Draws panels
+    Initializes panels
 */
 void inInitPanels() {
     foreach(panel; inPanels) {
