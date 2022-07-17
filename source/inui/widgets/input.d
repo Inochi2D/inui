@@ -87,6 +87,13 @@ bool uiImInputText(const(char)* wId, float width, ref string buffer, ImGuiInputT
 /**
     A button
 */
+bool uiImCheckbox(const(char)* text, ref bool val) {
+    return igCheckbox(text, &val);
+}
+
+/**
+    A button
+*/
 bool uiImButton(const(char)* text, vec2 size = vec2(0)) {
     return igButton(text, ImVec2(size.x, size.y));
 }
