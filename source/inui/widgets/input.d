@@ -90,3 +90,73 @@ bool uiImInputText(const(char)* wId, float width, ref string buffer, ImGuiInputT
 bool uiImButton(const(char)* text, vec2 size = vec2(0)) {
     return igButton(text, ImVec2(size.x, size.y));
 }
+
+/**
+    A min/max range selector
+*/
+void uiImRange(ref float cmin, ref float cmax, float min, float max) {
+    igDragFloatRange2("", &cmin, &cmax, 1.0f, min, max);
+}
+
+/**
+    A min/max range selector
+*/
+void uiImRange(ref int cmin, ref int cmax, int min, int max) {
+    igDragIntRange2("", &cmin, &cmax, 1.0f, min, max);
+}
+
+/**
+    A widget that allows you to drag between a min and max value
+*/
+void uiImDrag(ref float val, float min, float max) {
+    igDragFloat("", &val, 1.0f, min, max);
+}
+
+/**
+    A widget that allows you to drag between a min and max value
+*/
+void uiImDrag(ref int val, int min, int max) {
+    igDragInt("", &val, 1.0f, min, max);
+}
+
+/**
+    A widget that allows you to drag between a min and max value
+*/
+void uiImDrag2(ref float[] val, float min, float max) {
+    igDragFloat2("", cast(float[2]*)val.ptr, 1.0f, min, max);
+}
+
+/**
+    A widget that allows you to drag between a min and max value
+*/
+void uiImDrag3(ref float[] val, float min, float max) {
+    igDragFloat3("", cast(float[3]*)val.ptr, 1.0f, min, max);
+}
+
+/**
+    A widget that allows you to drag between a min and max value
+*/
+void uiImDrag4(ref float[] val, float min, float max) {
+    igDragFloat4("", cast(float[4]*)val.ptr, 1.0f, min, max);
+}
+
+/**
+    Begins a combo box
+*/
+bool uiImBeginComboBox(const(char)* previewName) {
+    return igBeginCombo("", previewName);
+}
+
+/**
+    Ends a combo box
+*/
+void uiImEndComboBox() {
+    igEndCombo();
+}
+
+/**
+    A selectable
+*/
+bool uiImSelectable(const(char)* name, bool selected = false) {
+    return igSelectable(name, selected);
+}
