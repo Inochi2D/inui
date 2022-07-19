@@ -10,6 +10,7 @@ import inui.core.app;
 import inui.core.font;
 import inui.core;
 import inui.panel;
+import inui.toolwindow;
 import inui.widgets;
 
 import bindbc.sdl;
@@ -312,6 +313,8 @@ public:
 
                 // Update panels
                 inUpdatePanels();
+
+                inUpdateToolWindows();
 
                 uiImRenderDialogs();
 

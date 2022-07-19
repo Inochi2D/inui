@@ -40,6 +40,16 @@ void uiImUnindent() {
     igUnindent();
 }
 
+void uiImSeperator() {
+    igPushStyleColor(ImGuiCol.Separator, igGetStyle().Colors[ImGuiCol.TextDisabled]);
+        igSeparator();
+    igPopStyleColor();
+}
+
+void uiImNewLine() {
+    igNewLine();
+}
+
 bool uiImHeader(const(char)* label, bool defaultOpen=false) {
     return igCollapsingHeader(label, defaultOpen ? ImGuiTreeNodeFlags.DefaultOpen : ImGuiTreeNodeFlags.None);
 }

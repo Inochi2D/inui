@@ -28,6 +28,13 @@ void uiImSpacer(vec2 size) {
 }
 
 /**
+    Keeps content on one line with the specified offset.
+*/
+void uiImSameLine(float startOffset=0, float spacing=-1) {
+    igSameLine(startOffset, spacing);
+}
+
+/**
     Gets available space
 */
 vec2 uiImAvailableSpace() {
