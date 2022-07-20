@@ -5,6 +5,7 @@
     Authors: Luna Nielsen
 */
 module inui.widgets;
+import inmath;
 import bindbc.imgui;
 
 public import inui.widgets.dummy;
@@ -52,4 +53,12 @@ void uiImNewLine() {
 
 bool uiImHeader(const(char)* label, bool defaultOpen=false) {
     return igCollapsingHeader(label, defaultOpen ? ImGuiTreeNodeFlags.DefaultOpen : ImGuiTreeNodeFlags.None);
+}
+
+bool uiImBeginChild(string id, vec2 size = vec2(0), bool border=false) {
+    return igBeginChild(igGetID(id.ptr, id.ptr+id.length), ImVec2(size.x, size.y), border);
+}
+
+void uiImEndChild() {
+    igEndChild();
 }
