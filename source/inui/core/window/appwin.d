@@ -179,6 +179,11 @@ public:
         SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
         SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
         SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
+        
+        version(linux) {
+            // Don't disable compositing on Linux
+            SDL_SetHint(SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR, "0");
+        }
 
         // Create window with GL and resizing enabled,
         // important to give the GL hint
