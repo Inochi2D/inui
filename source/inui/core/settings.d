@@ -43,7 +43,18 @@ void inSettingsSave() {
 /**
     Gets a value from the settings store
 */
-T inSettingsGet(T)(string name, T default_ = T.init) {
+T inSettingsGet(T)(string name, T default_ = T.init) if (__traits(hasMember, T, "deserializeFromFghj")) {
+    if (!inSettingsCanGet(name)) return default_;
+    
+    T ot = default_;
+    ot.deserializeFromFghj((cast(Fghj)settings)[name]);
+    return ot;
+}
+
+/**
+    Gets a value from the settings store
+*/
+T inSettingsGet(T)(string name, T default_ = T.init) if (!__traits(hasMember, T, "deserializeFromFghj")) {
     if (!inSettingsCanGet(name)) return default_;
     
     T ot = default_;
