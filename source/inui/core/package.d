@@ -12,6 +12,7 @@ public import inui.core.window;
 public import inui.core.app;
 public import inui.core.path;
 public import inui.core.settings;
+public import inui.core.utils;
 import inmath;
 
 private {
