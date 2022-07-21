@@ -183,6 +183,10 @@ public:
         version(linux) {
             // Don't disable compositing on Linux
             SDL_SetHint(SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR, "0");
+
+            // We *always* want to use EGL, especially if we want to pass textures around via DMABUF.
+            SDL_SetHint(SDL_HINT_VIDEO_X11_FORCE_EGL, "1");
+            SDL_SetHint(SDL_HINT_VIDEO_EGL_ALLOW_TRANSPARENCY, "1");
         }
 
         // Create window with GL and resizing enabled,
