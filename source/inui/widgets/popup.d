@@ -7,7 +7,12 @@ import bindbc.imgui;
     Call uiImEndPopup at the end of your popup IF uiImBeginPopup returns true.
 */
 bool uiImBeginPopup(string id) {
-    return igBeginPopupEx(igGetID(id.ptr, id.ptr+id.length), ImGuiWindowFlags.None);
+    return igBeginPopupEx(
+        igGetID(id.ptr, id.ptr+id.length), 
+        ImGuiWindowFlags.AlwaysAutoResize | 
+        ImGuiWindowFlags.NoTitleBar | 
+        ImGuiWindowFlags.NoSavedSettings
+    );
 }
 
 /**
@@ -24,4 +29,13 @@ void uiImEndPopup() {
 */
 void uiImOpenPopup(string id) {
     igOpenPopup(igGetID(id.ptr, id.ptr+id.length));
+}
+
+/**
+    Opens a named popup when an item is right clicked
+*/
+void uiImRightClickPopup(string id) {
+    if (igIsItemClicked(ImGuiMouseButton.Right)) {
+        uiImOpenPopup(id);
+    }
 }
