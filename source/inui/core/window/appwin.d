@@ -197,6 +197,12 @@ public:
             // We *always* want to use EGL, especially if we want to pass textures around via DMABUF.
             SDL_SetHint(SDL_HINT_VIDEO_X11_FORCE_EGL, "1");
             SDL_SetHint(SDL_HINT_VIDEO_EGL_ALLOW_TRANSPARENCY, "1");
+
+            // HACK: Since we're requesting EGL bindbc-opengl needs to load EGL stuff
+            // This more or less forces EGL
+            // TODO: Make a PR and/or issue to get a cleaner way to use EGL.
+            import std.process : environment;
+            environment["XDG_SESSION_TYPE"] = "wayland";
         }
 
         // Create window with GL and resizing enabled,
