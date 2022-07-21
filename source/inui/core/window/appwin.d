@@ -34,8 +34,15 @@ private:
     int width_, height_;
 
     bool show = true;
+    
+    string[] draggedFiles;
 
 protected:
+
+    final
+    ref string[] getDraggedFiles() {
+        return draggedFiles;
+    }
 
     /**
         Early update (before UI draws)
@@ -179,6 +186,9 @@ public:
         SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
         SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
         SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
+
+        // Set the app name
+        SDL_SetHint(SDL_HINT_APP_NAME, inGetApplication().humanName.toStringz);
         
         version(linux) {
             // Don't disable compositing on Linux
@@ -257,7 +267,7 @@ public:
         inUpdateTime();
 
         // Update important SDL events
-        string[] files;
+        draggedFiles.length = 0;
         SDL_Event event;
         while(SDL_PollEvent(&event)) {
             switch(event.type) {
@@ -266,7 +276,7 @@ public:
                     break;
 
                 case SDL_DROPFILE:
-                    files ~= cast(string)event.drop.file.fromStringz;
+                    draggedFiles ~= cast(string)event.drop.file.fromStringz;
                     SDL_RaiseWindow(window);
                     break;
                 
@@ -301,11 +311,11 @@ public:
         
 
             // Allow dragging files in to the main window
-            if (files.length > 0) {
+            if (draggedFiles.length > 0) {
                 if (igBeginDragDropSource(ImGuiDragDropFlags.SourceExtern)) {
-                    igSetDragDropPayload("_FILEDROP", &files, files.sizeof);
+                    igSetDragDropPayload("_FILEDROP", &draggedFiles, draggedFiles.sizeof);
                     igBeginTooltip();
-                        foreach(file; files) {
+                        foreach(file; draggedFiles) {
                             igText(file.toStringz);
                         }
                     igEndTooltip();
