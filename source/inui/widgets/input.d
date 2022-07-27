@@ -11,61 +11,56 @@ import core.memory : GC;
 import bindbc.imgui;
 import bindbc.sdl;
 import inmath.linalg;
+import core.stdc.string : memcpy;
+import core.stdc.stdlib : malloc;
+import std.string;
 
 private {
-    struct Str {
-        string str;
+
+    struct TextCallbackUserData {
+        string* str;
     }
 }
 
 /**
     D compatible text input
 */
-bool uiImInputText(const(char)* wId, ref string buffer, ImGuiInputTextFlags flags = ImGuiInputTextFlags.None) {
-    return uiImInputText(wId, uiImAvailableSpace().x, buffer, flags);
+bool uiImInputText(string id, ref string buffer, ImGuiInputTextFlags flags = ImGuiInputTextFlags.None) {
+    return uiImInputText(id, uiImAvailableSpace().x, buffer, flags);
 }
 
 /**
     D compatible text input
 */
-bool uiImInputText(const(char)* wId, float width, ref string buffer, ImGuiInputTextFlags flags = ImGuiInputTextFlags.None) {
-    auto id = igGetID(wId);
-    auto storage = igGetStateStorage();
+bool uiImInputText(string wId, float width, ref string buffer, ImGuiInputTextFlags flags = ImGuiInputTextFlags.None) {
+    auto id = igGetID(wId.ptr, wId.ptr+wId.length);
+    igPushID(id);
+    scope(exit) igPopID();
 
-    // We put a new string container on the heap and make sure the GC doesn't yeet it.
-    if (ImGuiStorage_GetVoidPtr(storage, id) is null) {
-        Str* cursedString = new Str(buffer~"\0");
-        GC.addRoot(cursedString);
-        ImGuiStorage_SetVoidPtr(storage, id, cursedString);
-    }
+    TextCallbackUserData cb;
+    cb.str = &buffer;
 
-    // We get it
-    Str* str = cast(Str*)ImGuiStorage_GetVoidPtr(storage, id);
 
     igPushItemWidth(width);
     if (igInputText(
-        wId,
-        cast(char*)str.str.ptr, 
-        str.str.length,
-        flags | 
-            ImGuiInputTextFlags.CallbackResize,
+        "###INPUT",
+        cast(char*)buffer.ptr, 
+        buffer.length+1,
+        flags | ImGuiInputTextFlags.CallbackResize,
         cast(ImGuiInputTextCallback)(ImGuiInputTextCallbackData* data) {
+            TextCallbackUserData* udata = cast(TextCallbackUserData*)data.UserData;
 
             // Allow resizing strings on GC heap
             if (data.EventFlag == ImGuiInputTextFlags.CallbackResize) {
-                Str* str = (cast(Str*)data.UserData);
-                str.str ~= "\0";
-                str.str.length = data.BufTextLen;
+            
+                // Resize and pass buffer ptr in
+                (*udata.str).length = data.BufTextLen;
+                data.Buf = cast(char*)(*udata.str).ptr;
             }
-            return 1;
+            return 0;
         },
-        str
+        &cb
     )) {
-
-        // Apply string, without null terminator
-        buffer = str.str;
-        GC.removeRoot(ImGuiStorage_GetVoidPtr(storage, id));
-        ImGuiStorage_SetVoidPtr(storage, id, null);
         return true;
     }
 
@@ -82,6 +77,28 @@ bool uiImInputText(const(char)* wId, float width, ref string buffer, ImGuiInputT
 
     SDL_SetTextInputRect(&rect);
     return false;
+}
+
+void uiImInputTextReset(const(char)* wId) {
+    auto id = igGetID(wId);
+    auto storage = igGetStateStorage();
+
+    // Remove string
+    if (ImGuiStorage_GetVoidPtr(storage, id) !is null) {
+        GC.removeRoot(ImGuiStorage_GetVoidPtr(storage, id));
+        ImGuiStorage_SetVoidPtr(storage, id, null);
+    }
+}
+
+void uiImInputTextSet(const(char)* wId, string data) {
+    auto id = igGetID(wId);
+    auto storage = igGetStateStorage();
+
+    // Remove string
+    if (ImGuiStorage_GetVoidPtr(storage, id) !is null) {
+        GC.removeRoot(ImGuiStorage_GetVoidPtr(storage, id));
+        ImGuiStorage_SetVoidPtr(storage, id, null);
+    }
 }
 
 /**
