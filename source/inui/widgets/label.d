@@ -32,7 +32,21 @@ void uiImLabelDisabled(string text) {
     Render wrapped text
 */
 void uiImLabelWrapped(string text, float wrapPosition=0f) {
-    igPushTextWrapPos(wrapPosition);
+    uiImPushTextWrapPos(wrapPosition);
         igTextUnformatted(text.ptr, text.ptr+text.length);
+    uiImPopTextWrapPos();
+}
+
+/**
+    Pushes a text wrap position
+*/
+void uiImPushTextWrapPos(float wrapPosition=0f) {
+    igPushTextWrapPos(wrapPosition);
+}
+
+/**
+    Pops a text wrap position
+*/
+void uiImPopTextWrapPos() {
     igPopTextWrapPos();
 }
