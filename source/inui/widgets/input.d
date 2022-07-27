@@ -39,17 +39,18 @@ bool uiImInputText(string wId, float width, ref string buffer, ImGuiInputTextFla
         buffer = "";
     }
 
-    auto id = igGetID(wId.ptr, wId.ptr+wId.length);
-    igPushID(id);
+    // Push ID
+    igPushID(igGetID(wId.ptr, wId.ptr+wId.length));
     scope(exit) igPopID();
+
+    // Set callback
     TextCallbackUserData cb;
     cb.str = &buffer;
 
     // Set desired width
     igPushItemWidth(width);
-    scope(success) igPopItemWidth();
-
     scope(exit) igPopItemWidth();
+
     if (igInputText(
         "###INPUT",
         cast(char*)buffer.ptr, 
@@ -104,15 +105,17 @@ bool uiImInputText(string wId, string label, float width, ref string buffer, ImG
         buffer = "";
     }
 
-    auto id = igGetID(wId.ptr, wId.ptr+wId.length);
-    igPushID(id);
+    // Push ID
+    igPushID(igGetID(wId.ptr, wId.ptr+wId.length));
     scope(exit) igPopID();
+
+    // Set callback
     TextCallbackUserData cb;
     cb.str = &buffer;
 
     // Set desired width
     igPushItemWidth(width);
-    scope(success) igPopItemWidth();
+    scope(exit) igPopItemWidth();
     
     // Render label
     scope(success) {
