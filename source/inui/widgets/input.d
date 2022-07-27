@@ -33,15 +33,23 @@ bool uiImInputText(string id, ref string buffer, ImGuiInputTextFlags flags = ImG
     D compatible text input
 */
 bool uiImInputText(string wId, float width, ref string buffer, ImGuiInputTextFlags flags = ImGuiInputTextFlags.None) {
+
+    // NOTE: null strings would result in segfault, make sure it's at least just empty.
+    if (buffer.ptr is null) {
+        buffer = "";
+    }
+
     auto id = igGetID(wId.ptr, wId.ptr+wId.length);
     igPushID(id);
     scope(exit) igPopID();
-
     TextCallbackUserData cb;
     cb.str = &buffer;
 
-
+    // Set desired width
     igPushItemWidth(width);
+    scope(success) igPopItemWidth();
+
+    scope(exit) igPopItemWidth();
     if (igInputText(
         "###INPUT",
         cast(char*)buffer.ptr, 
@@ -79,26 +87,74 @@ bool uiImInputText(string wId, float width, ref string buffer, ImGuiInputTextFla
     return false;
 }
 
-void uiImInputTextReset(const(char)* wId) {
-    auto id = igGetID(wId);
-    auto storage = igGetStateStorage();
-
-    // Remove string
-    if (ImGuiStorage_GetVoidPtr(storage, id) !is null) {
-        GC.removeRoot(ImGuiStorage_GetVoidPtr(storage, id));
-        ImGuiStorage_SetVoidPtr(storage, id, null);
-    }
+/**
+    D compatible text input
+*/
+bool uiImInputText(string id, string label, ref string buffer, ImGuiInputTextFlags flags = ImGuiInputTextFlags.None) {
+    return uiImInputText(id, label, uiImAvailableSpace().x, buffer, flags);
 }
 
-void uiImInputTextSet(const(char)* wId, string data) {
-    auto id = igGetID(wId);
-    auto storage = igGetStateStorage();
+/**
+    D compatible text input
+*/
+bool uiImInputText(string wId, string label, float width, ref string buffer, ImGuiInputTextFlags flags = ImGuiInputTextFlags.None) {
 
-    // Remove string
-    if (ImGuiStorage_GetVoidPtr(storage, id) !is null) {
-        GC.removeRoot(ImGuiStorage_GetVoidPtr(storage, id));
-        ImGuiStorage_SetVoidPtr(storage, id, null);
+    // NOTE: null strings would result in segfault, make sure it's at least just empty.
+    if (buffer.ptr is null) {
+        buffer = "";
     }
+
+    auto id = igGetID(wId.ptr, wId.ptr+wId.length);
+    igPushID(id);
+    scope(exit) igPopID();
+    TextCallbackUserData cb;
+    cb.str = &buffer;
+
+    // Set desired width
+    igPushItemWidth(width);
+    scope(success) igPopItemWidth();
+    
+    // Render label
+    scope(success) {
+        igSameLine(0, igGetStyle().ItemSpacing.x);
+        igTextEx(label.ptr, label.ptr+label.length);
+    }
+
+    if (igInputText(
+        "###INPUT",
+        cast(char*)buffer.ptr, 
+        buffer.length+1,
+        flags | ImGuiInputTextFlags.CallbackResize,
+        cast(ImGuiInputTextCallback)(ImGuiInputTextCallbackData* data) {
+            TextCallbackUserData* udata = cast(TextCallbackUserData*)data.UserData;
+
+            // Allow resizing strings on GC heap
+            if (data.EventFlag == ImGuiInputTextFlags.CallbackResize) {
+            
+                // Resize and pass buffer ptr in
+                (*udata.str).length = data.BufTextLen;
+                data.Buf = cast(char*)(*udata.str).ptr;
+            }
+            return 0;
+        },
+        &cb
+    )) {
+        return true;
+    }
+
+    ImVec2 min, max;
+    igGetItemRectMin(&min);
+    igGetItemRectMax(&max);
+
+    auto rect = SDL_Rect(
+        cast(int)min.x+32, 
+        cast(int)min.y, 
+        cast(int)max.x, 
+        32
+    );
+
+    SDL_SetTextInputRect(&rect);
+    return false;
 }
 
 /**
