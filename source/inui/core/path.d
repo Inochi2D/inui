@@ -59,6 +59,7 @@ string inGetAppConfigPath() {
 
     // On Linux the app data dir is in $XDG_CONFIG_DIR, $HOME/.config or $HOME
     // Example: /home/USERNAME/.inochi-creator
+    // NOTE: on flatpak XDG_CONFIG_HOME is ~/.var/app/
     else version(linux) {
         appDataDir = environment.get("XDG_CONFIG_HOME");
         if (!appDataDir) appDataDir = buildPath(environment.get("HOME"), ".config");
