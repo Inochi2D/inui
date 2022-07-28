@@ -139,3 +139,11 @@ string inGetAppLocalePath() {
     }
     return cachedLocaleDir;
 }
+
+string inGetAppCustomPath(string name) {    
+    string path = buildPath(inGetAppConfigPath(), name);
+
+    // Create our directory
+    if (!exists(path)) mkdirRecurse(path);
+    return path;
+}
