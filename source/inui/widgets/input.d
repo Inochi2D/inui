@@ -39,6 +39,8 @@ bool uiImInputText(string wId, float width, ref string buffer, ImGuiInputTextFla
         buffer = "";
     }
 
+    buffer ~= "\0";
+
     // Push ID
     igPushID(igGetID(wId.ptr, wId.ptr+wId.length));
     scope(exit) igPopID();
@@ -51,10 +53,10 @@ bool uiImInputText(string wId, float width, ref string buffer, ImGuiInputTextFla
     igPushItemWidth(width);
     scope(exit) igPopItemWidth();
 
-    if (igInputText(
+    bool res = igInputText(
         "###INPUT",
         cast(char*)buffer.ptr, 
-        buffer.length+1,
+        buffer.length,
         flags | ImGuiInputTextFlags.CallbackResize,
         cast(ImGuiInputTextCallback)(ImGuiInputTextCallbackData* data) {
             TextCallbackUserData* udata = cast(TextCallbackUserData*)data.UserData;
@@ -63,13 +65,17 @@ bool uiImInputText(string wId, float width, ref string buffer, ImGuiInputTextFla
             if (data.EventFlag == ImGuiInputTextFlags.CallbackResize) {
             
                 // Resize and pass buffer ptr in
-                (*udata.str).length = data.BufTextLen;
+                (*udata.str).length = data.BufTextLen + 1;
                 data.Buf = cast(char*)(*udata.str).ptr;
             }
             return 0;
         },
         &cb
-    )) {
+    );
+
+    buffer.length--;
+
+    if (res) {
         return true;
     }
 
@@ -105,6 +111,8 @@ bool uiImInputText(string wId, string label, float width, ref string buffer, ImG
         buffer = "";
     }
 
+    buffer ~= "\0";
+
     // Push ID
     igPushID(igGetID(wId.ptr, wId.ptr+wId.length));
     scope(exit) igPopID();
@@ -123,10 +131,10 @@ bool uiImInputText(string wId, string label, float width, ref string buffer, ImG
         igTextEx(label.ptr, label.ptr+label.length);
     }
 
-    if (igInputText(
+    bool res = igInputText(
         "###INPUT",
         cast(char*)buffer.ptr, 
-        buffer.length+1,
+        buffer.length,
         flags | ImGuiInputTextFlags.CallbackResize,
         cast(ImGuiInputTextCallback)(ImGuiInputTextCallbackData* data) {
             TextCallbackUserData* udata = cast(TextCallbackUserData*)data.UserData;
@@ -141,7 +149,11 @@ bool uiImInputText(string wId, string label, float width, ref string buffer, ImG
             return 0;
         },
         &cb
-    )) {
+    );
+
+    buffer.length--;
+
+    if (res) {
         return true;
     }
 
