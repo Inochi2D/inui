@@ -143,7 +143,7 @@ bool uiImInputText(string wId, string label, float width, ref string buffer, ImG
             if (data.EventFlag == ImGuiInputTextFlags.CallbackResize) {
             
                 // Resize and pass buffer ptr in
-                (*udata.str).length = data.BufTextLen;
+                (*udata.str).length = data.BufTextLen + 1;
                 data.Buf = cast(char*)(*udata.str).ptr;
             }
             return 0;
