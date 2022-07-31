@@ -250,3 +250,31 @@ void uiImEndComboBox() {
 bool uiImSelectable(const(char)* name, bool selected = false) {
     return igSelectable(name, selected);
 }
+
+/**
+    Color editor
+*/
+bool uiImColor4(const(char)* label, float[4]* colors) {
+    return igColorEdit4(label, colors);
+}
+
+/**
+    Color editor
+*/
+bool uiImColorButton4(const(char)* label, float[4]* colors) {
+    return igColorEdit4(label, colors, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar);
+}
+
+/**
+    Color picker
+*/
+bool uiImColorPicker4(const(char)* label, float[4]* colors) {
+    return igColorPicker4(label, colors);
+}
+
+/**
+    Color swatch
+*/
+bool uiImColorSwatch4(const(char)* description, vec4 color) {
+    return igColorButton(description, ImVec4(color.r, color.g, color.b, color.a));
+}
