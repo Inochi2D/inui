@@ -18,6 +18,7 @@ import bindbc.opengl;
 import bindbc.imgui;
 import bindbc.imgui.ogl;
 import std.string;
+import std.path;
 
 private {
     __gshared bool isGLLoaded;
@@ -36,6 +37,7 @@ private:
     bool show = true;
     
     string[] draggedFiles;
+    const(char)* iniPath;
 
 protected:
 
@@ -243,7 +245,9 @@ public:
             io.ConfigFlags |= ImGuiConfigFlags.ViewportsEnable;
         }
         io.ConfigWindowsResizeFromEdges = true;
-        
+        iniPath = buildPath(inGetAppConfigPath(), "imgui.ini").toStringz;
+        io.IniFilename = iniPath;
+
         // Init ImGui for SDL2 & OpenGL
         ImGui_ImplSDL2_InitForOpenGL(window, glctx);
         ImGuiOpenGLBackend.init("#version 330");
