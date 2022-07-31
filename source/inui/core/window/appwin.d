@@ -305,9 +305,8 @@ public:
                             event.window.event == SDL_WindowEventID.SDL_WINDOWEVENT_RESIZED && 
                             event.window.windowID == SDL_GetWindowID(window)
                         ) {
-                            this.width_ = event.window.data1;
-                            this.height_ = event.window.data2;
-                            onResized(event.window.data1, event.window.data2);
+                            SDL_GL_GetDrawableSize(window, &this.width_, &this.height_);
+                            onResized(this.width_, this.height_);
                         }
                     }
                     break;
