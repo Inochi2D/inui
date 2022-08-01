@@ -38,7 +38,8 @@ void inInitUI() {
 */
 void inUpdateTime() {
     lastTime = currTime;
-    currTime = cast(double)SDL_GetTicks64()*0.001;
+    if (SDL_GetTicks64) currTime = cast(double)SDL_GetTicks64()*0.001;
+    else currTime = cast(double)SDL_GetTicks()*0.001;
 }
 
 /**
