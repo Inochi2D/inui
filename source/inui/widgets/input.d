@@ -244,8 +244,8 @@ bool uiImBeginComboBox(string id, const(char)* previewName) {
     Ends a combo box
 */
 void uiImEndComboBox() {
-    igPopID(); // Pop extra ID pushed by uiImBeginComboBox
     igEndCombo();
+    igPopID(); // Pop extra ID pushed by uiImBeginComboBox
 }
 
 /**
