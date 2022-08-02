@@ -233,8 +233,10 @@ void uiImDrag4(ref float[] val, float min, float max) {
 /**
     Begins a combo box
 */
-bool uiImBeginComboBox(const(char)* previewName) {
-    return igBeginCombo("", previewName);
+bool uiImBeginComboBox(string id, const(char)* previewName) {
+    igPushID(id.ptr, id.ptr+id.length);
+    scope(exit) igPopID();
+    return igBeginCombo("###COMBO", previewName);
 }
 
 /**
