@@ -235,14 +235,16 @@ void uiImDrag4(ref float[] val, float min, float max) {
 */
 bool uiImBeginComboBox(string id, const(char)* previewName) {
     igPushID(id.ptr, id.ptr+id.length);
-    scope(exit) igPopID();
-    return igBeginCombo("###COMBO", previewName);
+    bool ret = igBeginCombo("###COMBO", previewName);
+    if (!ret) igPopID();
+    return ret;
 }
 
 /**
     Ends a combo box
 */
 void uiImEndComboBox() {
+    igPopID(); // Pop extra ID pushed by uiImBeginComboBox
     igEndCombo();
 }
 
