@@ -12,6 +12,7 @@ import inui.core;
 import inui.panel;
 import inui.toolwindow;
 import inui.widgets;
+import inui.input;
 
 import bindbc.sdl;
 import bindbc.opengl;
@@ -317,7 +318,8 @@ public:
         ImGuiOpenGLBackend.new_frame();
         ImGui_ImplSDL2_NewFrame();
         igNewFrame();
-        
+            // Update input
+            inInputUpdate();
 
             // Allow dragging files in to the main window
             if (draggedFiles.length > 0) {
