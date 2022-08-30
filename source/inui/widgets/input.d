@@ -282,3 +282,31 @@ bool uiImColorPicker4(const(char)* label, float[4]* colors) {
 bool uiImColorSwatch4(const(char)* description, vec4 color) {
     return igColorButton(description, ImVec4(color.r, color.g, color.b, color.a));
 }
+
+/**
+    Color editor
+*/
+bool uiImColor3(const(char)* label, float[3]* colors) {
+    return igColorEdit3(label, colors);
+}
+
+/**
+    Color editor
+*/
+bool uiImColorButton3(const(char)* label, float[3]* colors) {
+    return igColorEdit3(label, colors, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar);
+}
+
+/**
+    Color picker
+*/
+bool uiImColorPicker3(const(char)* label, float[3]* colors) {
+    return igColorPicker3(label, colors);
+}
+
+/**
+    Color swatch
+*/
+bool uiImColorSwatch3(const(char)* description, vec3 color) {
+    return igColorButton(description, ImVec4(color.r, color.g, color.b));
+}
