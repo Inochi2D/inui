@@ -232,7 +232,7 @@ public:
                     throw new Exception("OpenGL library could not be loaded!");
 
                 case GLSupport.noContext:
-                    throw new Exception("No valid OpenGL 4.2 context was found!");
+                    throw new Exception("No valid OpenGL context was found!");
 
                 default: break;
             }
