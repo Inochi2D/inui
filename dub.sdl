@@ -19,15 +19,15 @@ stringImportPaths "res/"
 configuration "windows" {
 	platforms "windows"
 	targetType "library"
-	subConfiguration "bindbc-imgui" "dynamic_dynamicCRT"
+	subConfiguration "i2d-imgui" "dynamic_dynamicCRT"
 }
 configuration "macOS" {
 	platforms "osx"
 	targetType "library"
-	subConfiguration "bindbc-imgui" "dynamic_dynamicCRT"
+	subConfiguration "i2d-imgui" "dynamic_dynamicCRT"
 }
 configuration "linux" {
 	platforms "linux"
 	targetType "library"
-	subConfiguration "bindbc-imgui" "dynamic_dynamicCRT"
+	subConfiguration "i2d-imgui" "dynamic_dynamicCRT"
 }
