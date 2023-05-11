@@ -379,6 +379,16 @@ public:
         uiImCleanupDialogs();
     }
 
+    string getWindowHandle() {
+        SDL_SysWMinfo info;
+        auto res = SDL_GetWindowWMInfo(window, &info);
+        if (info.subsystem == SDL_SYSWM_TYPE.SDL_SYSWM_X11) {
+            import std.conv : to;
+            return "x11:" ~ info.info.x11.window.to!string(16);
+        }
+        return "";
+    }
+
     /**
         Forces the window to be focused
     */
