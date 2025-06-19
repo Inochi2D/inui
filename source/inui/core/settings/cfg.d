@@ -1,11 +1,4 @@
-/*
-    Copyright © 2022, Inochi2D Project
-    Distributed under the 2-Clause BSD License, see LICENSE file.
-    
-    Authors: Luna Nielsen
-*/
-module inui.core.path;
-import inui.core.app;
+module inui.core.settings.cfg;
 import std.path;
 import std.process;
 import std.file : getcwd, mkdirRecurse, exists;
@@ -18,16 +11,20 @@ private {
     string inForcedConfigDir;
 }
 
+/**
+    The name of the folder inochi creator config gets thrown in to.
+*/
+enum APP_FOLDER_NAME = "inochi-creator";
 
 /**
     Name of environment variable to force a configuration path
 */
-enum ENV_CONFIG_PATH = "IN_CONFIG_PATH";
+enum ENV_CONFIG_PATH = "INOCHI_CONFIG_PATH";
 
 /**
     Returns the app configuration directory for the platform
 */
-string inGetAppConfigPath() {
+string uiGetAppConfigPath() {
     if (cachedConfigDir) return cachedConfigDir;
     if (inForcedConfigDir) return inForcedConfigDir;
     string appDataDir;
@@ -59,7 +56,6 @@ string inGetAppConfigPath() {
 
     // On Linux the app data dir is in $XDG_CONFIG_DIR, $HOME/.config or $HOME
     // Example: /home/USERNAME/.inochi-creator
-    // NOTE: on flatpak XDG_CONFIG_HOME is ~/.var/app/
     else version(linux) {
         appDataDir = environment.get("XDG_CONFIG_HOME");
         if (!appDataDir) appDataDir = buildPath(environment.get("HOME"), ".config");
@@ -91,14 +87,24 @@ string inGetAppConfigPath() {
         // used .inochi-creator there, but that's not correct
         // This code will ensure we still use old config if it's there.
         // Otherwise we create config for the *correct* path
-        string fdir = buildPath(appDataDir, "."~inGetApplication().configDirName);
-        if (!exists(fdir)) fdir = buildPath(appDataDir, inGetApplication().configDirName);
+        string fdir = buildPath(appDataDir, "."~APP_FOLDER_NAME);
+        if (!exists(fdir)) fdir = buildPath(appDataDir, APP_FOLDER_NAME);
+        appDataDir = fdir;
+        return appDataDir;
+    } else version(OSX) {
+
+        // On OSX we're using standard directories, prior we
+        // used .inochi-creator there, but that's not correct
+        // This code will ensure we still use old config if it's there.
+        // Otherwise we create config for the *correct* path
+        string fdir = buildPath(appDataDir, "."~APP_FOLDER_NAME);
+        if (!exists(fdir)) fdir = buildPath(appDataDir, APP_FOLDER_NAME);
         appDataDir = fdir;
         return appDataDir;
     } else {
 
         // On other platforms we go for .(app name)
-        appDataDir = buildPath(appDataDir, "."~inGetApplication().configDirName);
+        appDataDir = buildPath(appDataDir, "."~APP_FOLDER_NAME);
         return appDataDir;
     }
 }
@@ -106,33 +112,33 @@ string inGetAppConfigPath() {
 /**
     Gets the directory for an imgui config file.
 */
-string inGetAppImguiConfigFile() {
+string uiGetAppImguiConfigFile() {
     if (cachedImguiFileDir) return cachedImguiFileDir;
-    cachedImguiFileDir = buildPath(inGetAppConfigPath(), "imgui.ini");
+    cachedImguiFileDir = buildPath(uiGetAppConfigPath(), "imgui.ini");
     return cachedImguiFileDir;
 }
 
 /**
     Gets directory for custom fonts
 */
-string inGetAppFontsPath() {
+string uiGetAppFontsPath() {
     if (cachedFontDir) return cachedFontDir;
-    cachedFontDir = buildPath(inGetAppConfigPath(), "fonts");
+    cachedFontDir = buildPath(uiGetAppConfigPath(), "fonts");
     if (!exists(cachedFontDir)) {
         
         // Create our font directory
         mkdirRecurse(cachedFontDir);
-
     }
     return cachedFontDir;
 }
 
 /**
-    Gets directory for custom fonts
+    Gets directory for custom locales
 */
-string inGetAppLocalePath() {
+string uiGetAppLocalePath() {
     if (cachedLocaleDir) return cachedLocaleDir;
-    cachedLocaleDir = buildPath(inGetAppConfigPath(), "i18n");
+
+    cachedLocaleDir = buildPath(uiGetAppConfigPath(), "i18n");
     if (!exists(cachedLocaleDir)) {
         
         // Create our font directory
@@ -141,10 +147,19 @@ string inGetAppLocalePath() {
     return cachedLocaleDir;
 }
 
-string inGetAppCustomPath(string name) {    
-    string path = buildPath(inGetAppConfigPath(), name);
+/**
+    Gets special directory for locales
+*/
+string uiGetAppLocalePathExtra() {
+    
+    // AppImage locale dir is the root of the appimage
+    version(linux) {
+        auto here = environment.get("HERE");
+        if (here) {
+            return here;
+        }    
+    }
 
-    // Create our directory
-    if (!exists(path)) mkdirRecurse(path);
-    return path;
+    return null;
 }
+
