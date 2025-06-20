@@ -48,19 +48,49 @@ private:
         } else static assert(0, T.stringof~" is not supported.");
     }
 
+    SDL_GLContext tryCreateContextVersion(int major, int minor) {
+        SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_CONTEXT_PROFILE_MASK, SDL_GLProfile.SDL_GL_CONTEXT_PROFILE_CORE);
+        SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_CONTEXT_MAJOR_VERSION, major);
+        SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_CONTEXT_MINOR_VERSION, minor);
+        return SDL_GL_CreateContext(handle);
+    }
+
+    // Helper that sets up and creates a GL context.
+    SDL_GLContext createGLContext() {
+        import bindbc.opengl : openGLContextVersion, isOpenGLLoaded, GLSupport, loadOpenGL;
+        
+        SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_DOUBLEBUFFER, 1);
+        SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_DEPTH_SIZE, 24);
+        SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_STENCIL_SIZE, 8);
+        SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_RED_SIZE, 8);
+        SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_GREEN_SIZE, 8);
+        SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_BLUE_SIZE, 8);
+        SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_ALPHA_SIZE, 8);
+        if (auto handle = this.tryCreateContextVersion(3, 2)) {
+            if (openGLContextVersion <= GLSupport.gl32)
+                loadOpenGL();
+            return handle;
+        } else if (auto handle = this.tryCreateContextVersion(3, 1)) {
+            if (openGLContextVersion <= GLSupport.gl31)
+                loadOpenGL();
+            return handle;
+        }
+        return SDL_GLContext.init;
+    }
+
     enum ulong BASE_FLAGS = SDL_WindowFlags.SDL_WINDOW_OPENGL | SDL_WindowFlags.SDL_WINDOW_HIDDEN;
 
 public:
 
     /**
-        The window's widget.
-    */
-    Widget widget;
-
-    /**
         The ID of the window
     */
     @property uint id() { return SDL_GetWindowID(handle); }
+
+    /**
+        The SDL Handle of the window.
+    */
+    @property SDL_Window* windowHandle() { return this.handle; }
 
     /**
         Whether the NativeWindow was requested to close
@@ -153,9 +183,19 @@ public:
     @property auto resizable(bool value) { cast(void)SDL_SetWindowResizable(handle, value); return this; }
 
     /**
+        Whether the NativeWindow is hidden.
+    */
+    @property bool isHidden() { return cast(bool)(SDL_GetWindowFlags(handle) & SDL_WindowFlags.SDL_WINDOW_HIDDEN); }
+
+    /**
         Whether the NativeWindow is visible.
     */
-    @property bool isVisible() { return !(SDL_GetWindowFlags(handle) & SDL_WindowFlags.SDL_WINDOW_HIDDEN); }
+    @property bool isMinimized() { return cast(bool)(SDL_GetWindowFlags(handle) & SDL_WindowFlags.SDL_WINDOW_MINIMIZED); }
+
+    /**
+        Whether the NativeWindow is visible.
+    */
+    @property bool isVisible() { return !(isHidden || isMinimized); }
 
     /**
         Whether the NativeWindow is modal.
@@ -203,9 +243,44 @@ public:
         The area of the NativeWindow that's safe for interactive content.
     */
     @property recti safeArea() {
-        SDL_Rect r;
-        cast(void)SDL_GetWindowSafeArea(handle, &r);
-        return recti(r.x, r.y, r.w, r.h);
+        recti r;
+        cast(void)SDL_GetWindowSafeArea(handle, cast(SDL_Rect*)&r);
+        return r;
+    }
+
+    /**
+        Whether text input is active.
+    */
+    @property bool isTextInputActive() { return SDL_TextInputActive(handle); }
+
+    /**
+        Whether an on-screen-keyboard is being shown.
+    */
+    @property bool isOSKShown() { return SDL_ScreenKeyboardShown(handle); }
+
+    /**
+        The current text cursor position.
+    */
+    @property int textCursor() {
+        int cursor;
+        cast(void)SDL_GetTextInputArea(handle, null, &cursor);
+        return cursor;
+    }
+    @property void textCursor(int value) {
+        recti r = textArea;
+        cast(void)SDL_SetTextInputArea(handle, cast(SDL_Rect*)&r, value);
+    }
+
+    /**
+        The current text input area.
+    */
+    @property recti textArea() {
+        recti r;
+        cast(void)SDL_GetTextInputArea(handle, cast(SDL_Rect*)&r, null);
+        return r;
+    }
+    @property void textArea(recti value) {
+        cast(void)SDL_SetTextInputArea(handle, cast(SDL_Rect*)&value, textCursor);
     }
 
     /**
@@ -274,8 +349,7 @@ public:
     */
     static
     NativeWindow fromID(uint id) {
-        auto handle = SDL_GetWindowFromID(id);
-        if (handle) {
+        if (auto handle = SDL_GetWindowFromID(id)) {
             foreach(ref NativeWindow window; windows_) {
                 if (window.handle == handle)
                     return window;
@@ -298,6 +372,39 @@ public:
             return nogc_new!NativeWindow(handle);
         }
         return null;
+    }
+
+    /**
+        Starts text input for the window.
+
+        Returns:
+            $(D true) if the operation succeeded,
+            $(D false) otherwise.
+    */
+    bool startTextInput() {
+        return SDL_StartTextInput(handle);
+    }
+
+    /**
+        Stops text input for the window.
+
+        Returns:
+            $(D true) if the operation succeeded,
+            $(D false) otherwise.
+    */
+    bool stopTextInput() {
+        return SDL_StopTextInput(handle);
+    }
+
+    /**
+        Clears the composition for the window.
+
+        Returns:
+            $(D true) if the operation succeeded,
+            $(D false) otherwise.
+    */
+    bool clearComposition() {
+        return SDL_ClearComposition(handle);
     }
 
     /**
@@ -512,7 +619,7 @@ public:
         // If that NativeWindow has a GL context, but isn't in our list,
         // add it.
         if (SDL_GetWindowFlags(window.handle) & SDL_WindowFlags.SDL_WINDOW_OPENGL) {
-            return nogc_new!GLContext(window, SDL_GL_CreateContext(window.handle));
+            return nogc_new!GLContext(window, window.createGLContext());
         }
         return null;
     }

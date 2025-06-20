@@ -6,7 +6,8 @@
     
     Authors: Luna Nielsen
 */
-module inui.core.ui.backend.gl;
+module inui.core.backend.gl;
+import inui.core.window;
 import inui.core.msgbox;
 import inui.app;
 import bindbc.opengl;
@@ -16,16 +17,18 @@ import inmath;
 import std.format : format;
 import std.exception : enforce;
 import std.conv;
+import sdl.mouse;
 
-private {
+private __gshared {
     // OpenGL Data
     GLuint g_GlVersion = 0; // Extracted at runtime using GL_MAJOR_VERSION, GL_MINOR_VERSION queries (e.g. 320 for GL 3.2)
 
     version (OSX)
-        string g_GlslVersionString = "#version 330\0"; // Specified by user or detected based on compile time GL settings.
+        string g_GlslVersionString = "#version 330"; // Specified by user or detected based on compile time GL settings.
     else
-        string g_GlslVersionString = "#version 130\0"; // Specified by user or detected based on compile time GL settings.
+        string g_GlslVersionString = "#version 130"; // Specified by user or detected based on compile time GL settings.
     
+    nstring g_RenderName;
     GLuint g_FontTexture = 0;
     GLuint g_ShaderHandle = 0, g_VertHandle = 0, g_FragHandle = 0;
     GLint g_AttribLocationTex = 0, g_AttribLocationProjMtx = 0; // Uniforms location
@@ -34,7 +37,7 @@ private {
 }
 
 // Functions
-bool incGLBackendInit(const(char)* glsl_version) {
+bool incGLBackendInit() {
     enforce(loadOpenGL() != GLSupport.noContext, "No OpenGL Context could be initialized.");
 
     // Query for GL version (e.g. 320 for GL 3.2)
@@ -49,7 +52,8 @@ bool incGLBackendInit(const(char)* glsl_version) {
 
     // Setup back-end capabilities flags
     ImGuiIO* io = igGetIO();
-    io.BackendRendererName = "OpenGL 3";
+    g_RenderName = "OpenGL %s.%s (GLSL %s)".format(major, minor, g_GlslVersionString[9..$]);
+    io.BackendRendererName = g_RenderName.ptr;
     if (g_GlVersion >= 320) {
         io.BackendFlags |= cast(int) ImGuiBackendFlags.RendererHasVtxOffset; // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
     }
@@ -61,9 +65,7 @@ bool incGLBackendInit(const(char)* glsl_version) {
     // Desktop OpenGL 3/4 need a function loader. See the IMGUI_IMPL_OPENGL_LOADER_xxx explanation above.
     GLint current_texture;
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &current_texture);
-
-    if (io.ConfigFlags & ImGuiConfigFlags.ViewportsEnable)
-        incGLBackendPlatformInterfaceInit();
+    incGLBackendPlatformInterfaceInit();
     return true;
 }
 
@@ -74,46 +76,31 @@ void incGLBackendShutdown() {
 
 void incGLBackendNewFrame() {
     if (!g_ShaderHandle)
-        incGLBackendCreateDeviceObjects();
+        cast(void)incGLBackendCreateDeviceObjects();
 }
 
-void incGLBackendBeginRender() {
-    version (UseUIScaling) {
-        version (OSX) {
-            // macOS handles the UI scaling automatically, as such we don't need to do as much cursed shit(TM) there.
+void incGLBackendBeginRender(NativeWindow window) {
+    float uiScale = window.scale;
+    auto io = igGetIO();
+    auto vp = igGetMainViewport();
 
-        } else {
-            float uiScale = incGetUIScale();
-            auto io = igGetIO();
-            auto vp = igGetMainViewport();
+    vp.WorkSize.x = ceil(cast(double) vp.WorkSize.x / cast(double) uiScale);
+    vp.WorkSize.y = ceil(cast(double) vp.WorkSize.y / cast(double) uiScale);
+    vp.Size.x = ceil(cast(double) vp.Size.x / cast(double) uiScale);
+    vp.Size.y = ceil(cast(double) vp.Size.y / cast(double) uiScale);
 
-            vp.WorkSize.x = ceil(cast(double) vp.WorkSize.x / cast(double) uiScale);
-            vp.WorkSize.y = ceil(cast(double) vp.WorkSize.y / cast(double) uiScale);
-            vp.Size.x = ceil(cast(double) vp.Size.x / cast(double) uiScale);
-            vp.Size.y = ceil(cast(double) vp.Size.y / cast(double) uiScale);
+    // NOTE:
+    // For some reason there's this weird offset added during scaling
+    // This magic number SOMEHOW works, and I don't know why
+    // I hate computers
+    //
+    // This only works with scaling up to 200%, after which it breaks
+    vp.WorkSize.y -= (26 + 10) * (uiScale - 1);
 
-            // NOTE:
-            // For some reason there's this weird offset added during scaling
-            // This magic number SOMEHOW works, and I don't know why
-            // I hate computers
-            //
-            // This only works with scaling up to 200%, after which it breaks
-            vp.WorkSize.y -= (26 + 10) * (uiScale - 1);
-
-            int mx, my;
-            version (UseUIScaling) {
-                SDL_GetMouseState(&mx, &my);
-                io.MousePos.x = (cast(float) mx) / uiScale;
-                io.MousePos.y = (cast(float) my) / uiScale;
-            } else {
-                int wx, wy;
-                SDL_GetGlobalMouseState(&mx, &my);
-                SDL_GetWindowPosition(cast(SDL_Window*) vp.PlatformHandle, &wx, &wy);
-                io.MousePos.x = cast(float)(mx - wx) / uiScale;
-                io.MousePos.y = cast(float)(my - wy) / uiScale;
-            }
-        }
-    }
+    float mx, my;
+    SDL_GetMouseState(&mx, &my);
+    io.MousePos.x = mx / uiScale;
+    io.MousePos.y = my / uiScale;
 }
 
 static void incGLBackendSetupRenderState(ImDrawData* draw_data, float fb_width, float fb_height, GLuint vertex_array_object) {
@@ -125,9 +112,6 @@ static void incGLBackendSetupRenderState(ImDrawData* draw_data, float fb_width, 
     glDisable(GL_CULL_FACE);
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_SCISSOR_TEST);
-
-    // Support for GL 4.5 rarely used glClipControl(GL_UPPER_LEFT)
-    bool clip_origin_lower_left = true;
 
     // Setup viewport, orthographic projection matrix
     // Our visible imgui space lies from draw_data.DisplayPos (top left) to draw_data.DisplayPos+data_data.DisplaySize (bottom right). DisplayPos is (0,0) for single viewport apps.
@@ -174,6 +158,10 @@ void incGLBackendRenderDrawData(ImDrawData* draw_data) {
     float fb_height = draw_data.DisplaySize.y * draw_data.FramebufferScale.y * uiScale;
     if (fb_width <= 0 || fb_height <= 0)
         return;
+
+    // Make sure fb is appropriately cleared.
+    glViewport(0, 0, cast(int)fb_width, cast(int)fb_height);
+    glClear(GL_COLOR_BUFFER_BIT);
 
     // Backup GL state
     GLenum last_active_texture;
@@ -593,24 +581,19 @@ void incGLBackendDestroyDeviceObjects() {
 // This is an _advanced_ and _optional_ feature, allowing the back-end to create and handle multiple viewports simultaneously.
 // If you are new to dear imgui or creating a new binding for dear imgui, it is recommended that you completely ignore this section first..
 //--------------------------------------------------------------------------------------------------------
-extern (C) {
-    version (NoUIScaling) {
-        void incGLBackendPlatformRenderWindow(ImGuiViewport* viewport, void*) {
-            if (!(viewport.Flags & ImGuiViewportFlags.NoRendererClear)) {
-                ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
-                glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
-                glClear(GL_COLOR_BUFFER_BIT);
-            }
-            incGLBackendRenderDrawData(viewport.DrawData);
-        }
+extern (C) 
+void incGLBackendPlatformRenderWindow(ImGuiViewport* viewport, void*) {
+    if (!(viewport.Flags & ImGuiViewportFlags.NoRendererClear)) {
+        ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
+        glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+        glClear(GL_COLOR_BUFFER_BIT);
     }
+    incGLBackendRenderDrawData(viewport.DrawData);
 }
 
 void incGLBackendPlatformInterfaceInit() {
-    version (NoUIScaling) {
-        ImGuiPlatformIO* platform_io = igGetPlatformIO();
-        platform_io.Renderer_RenderWindow = &incGLBackendPlatformRenderWindow;
-    }
+    ImGuiPlatformIO* platform_io = igGetPlatformIO();
+    platform_io.Renderer_RenderWindow = &incGLBackendPlatformRenderWindow;
 }
 
 void incGLBackendPlatformInterfaceShutdown() {

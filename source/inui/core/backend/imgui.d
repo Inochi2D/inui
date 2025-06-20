@@ -7,6 +7,7 @@
     Authors: Luna Nielsen
 */
 module inui.core.backend.imgui;
+import inui.core.window;
 import inui.app;
 import nulib.string;
 import i2d.imgui;
@@ -14,23 +15,19 @@ import sdl;
 import sdl.rect;
 import sdl.clipboard;
 import sdl.properties;
+import inmath;
 
 struct BackendData {
 
     /**
-        The main window of the app.
+        Native Window
     */
-    Application app;
+    NativeWindow window;
 
     /**
-        Main window of the application
+        IME Window
     */
-    SDL_Window* mainWindow;
-
-    /**
-        Handle of the IME Window
-    */
-    SDL_Window* imeWindowHandle;
+    NativeWindow imeWindow;
 
     /**
         Clipboard Data
@@ -78,8 +75,7 @@ struct BackendData {
 */
 extern(C)
 BackendData* ImGui_CreatorGetBackendData(ImGuiContext* ctx = null) {
-    if (!ctx)
-        ctx = igGetCurrentContext();
+    if (!ctx) ctx = igGetCurrentContext();
     return ctx ? cast(BackendData*)igGetIO().BackendPlatformUserData : null;
 }
 
@@ -111,27 +107,23 @@ void ImGui_ImplSetClipboardText(ImGuiContext* ctx, const(char)* text) {
 extern(C)
 void ImGui_ImplPlatformSetImeData(ImGuiContext* ctx, ImGuiViewport* viewport, ImGuiPlatformImeData* data) {
     BackendData* bd = ImGui_CreatorGetBackendData(ctx);
-    SDL_WindowID id = cast(SDL_WindowID)viewport.PlatformHandle;
-    SDL_Window* handle = SDL_GetWindowFromID(id);
+    NativeWindow handle = cast(NativeWindow)viewport.PlatformHandle;
 
-    if ((!data.WantVisible || bd.imeWindowHandle !is handle) && bd.imeWindowHandle !is null) {
-        SDL_StopTextInput(bd.imeWindowHandle);
-        bd.imeWindowHandle = null;
+    if ((!data.WantVisible || bd.imeWindow !is handle) && bd.imeWindow !is null) {
+        bd.imeWindow.stopTextInput();
+        bd.imeWindow = null;
     }
 
     if (data.WantVisible) {
-        SDL_Rect r;
-        r.x = cast(int) data.InputPos.x;
-        r.y = cast(int) data.InputPos.y;
-        r.w = 1;
-        r.h = cast(int) data.InputLineHeight;
-
-        SDL_SetTextInputArea(handle, &r, 0);
-        bd.imeWindowHandle = handle;
+        bd.imeWindow = handle;
+        bd.imeWindow.textArea = recti(
+            cast(int)data.InputPos.x, 
+            cast(int)data.InputPos.y, 
+            1, 
+            cast(int)data.InputLineHeight
+        );
+        bd.imeWindow.startTextInput();
     }
-
-    if (data.WantVisible)
-        SDL_StartTextInput(handle);
 }
 
 extern(C)
@@ -409,10 +401,10 @@ ImGuiKey ImGui_ImplKeyEventToImGuiKey(SDL_Keycode keycode, SDL_Scancode scancode
 extern(C)
 void ImGui_ImplUpdateKeyModifiers(SDL_Keymod sdlKeyMods) {
     ImGuiIO* io = igGetIO();
-    // ImGuiIO_AddKeyEvent(io, ImGuiMod.Ctrl, (sdlKeyMods & SDL_Keymod.SDL_KMOD_CTRL) != 0);
-    // ImGuiIO_AddKeyEvent(io, ImGuiMod.Shift, (sdlKeyMods & SDL_Keymod.SDL_KMOD_SHIFT) != 0);
-    // ImGuiIO_AddKeyEvent(io, ImGuiMod.Alt, (sdlKeyMods & SDL_Keymod.SDL_KMOD_ALT) != 0);
-    // ImGuiIO_AddKeyEvent(io, ImGuiMod.Super, (sdlKeyMods & SDL_Keymod.SDL_KMOD_GUI) != 0);
+    ImGuiIO_AddKeyEvent(io, ImGuiKey.ImGuiMod_Ctrl, (sdlKeyMods & SDL_Keymod.KMOD_CTRL) != 0);
+    ImGuiIO_AddKeyEvent(io, ImGuiKey.ImGuiMod_Shift, (sdlKeyMods & SDL_Keymod.KMOD_SHIFT) != 0);
+    ImGuiIO_AddKeyEvent(io, ImGuiKey.ImGuiMod_Alt, (sdlKeyMods & SDL_Keymod.KMOD_ALT) != 0);
+    ImGuiIO_AddKeyEvent(io, ImGuiKey.ImGuiMod_Super, (sdlKeyMods & SDL_Keymod.KMOD_GUI) != 0);
 }
 
 extern(C)
@@ -540,25 +532,40 @@ bool ImGui_ImplProcessEvent(const(SDL_Event)* event) {
     return false;
 }
 
+void ImGui_ImplGetWindowSizeAndFramebufferScale(NativeWindow window, ref ImVec2 outSize, ref ImVec2 outScale) {
+    vec2i size = window.isVisible ? window.pxSize : vec2i(0, 0);
+    outSize = ImVec2(size.x, size.y);
+    outScale = ImVec2(window.scale, window.scale);
+}
+
+void ImGui_ImplNewFrame(NativeWindow window, float deltaTime) {
+    ImGuiIO* io = igGetIO();
+    ImGui_ImplGetWindowSizeAndFramebufferScale(window, io.DisplaySize, io.DisplayFramebufferScale);
+    io.DeltaTime = deltaTime;
+}
+
+void ImGui_ImplViewportUpdate(NativeWindow window) {
+    ImGuiIO* io = igGetIO();
+    
+    // Viewports
+    if (io.ConfigFlags & ImGuiConfigFlags.ViewportsEnable) {
+        igUpdatePlatformWindows();
+        igRenderPlatformWindowsDefault();
+        window.gl.makeCurrent();
+    }
+}
 
 //
 //          INITIALIZATION
 //
 
 extern(C)
-void ImGui_ImplSetupPlatformHandles(ImGuiViewport* viewport, SDL_Window* window) {
-    viewport.PlatformHandle = cast(void*)SDL_GetWindowID(window);
-
-    version(Windows) {
-        viewport.PlatformHandleRaw = cast(void*)SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, null);
-    } else version(OSX) {
-        viewport.PlatformHandleRaw = cast(void*)SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, null);
-    } else {    
-        viewport.PlatformHandleRaw = null;
-    }
+void ImGui_ImplSetupPlatformHandles(ImGuiViewport* viewport, NativeWindow window) {
+    viewport.PlatformHandle = cast(void*)window;
+    viewport.PlatformHandleRaw = window.nativeHandle;
 }
 
-bool ImGui_ImplInit(Application app) {
+bool ImGui_ImplInit(NativeWindow window) {
     import numem : nogc_new;
 
     ImGuiIO* io = igGetIO();
@@ -569,8 +576,11 @@ bool ImGui_ImplInit(Application app) {
     io.BackendFlags |= ImGuiBackendFlags.HasMouseCursors;           // We can honor GetMouseCursor() values (optional)
     io.BackendFlags |= ImGuiBackendFlags.HasSetMousePos;            // We can honor io.WantSetMousePos requests (optional, rarely used)
     
+    // TODO: Add viewports support?
+    // io.BackendFlags |= ImGuiBackendFlags.PlatformHasViewports;
+
     auto bd = cast(BackendData*)io.BackendPlatformUserData;
-    bd.app = app;
+    bd.window = window;
 
     // Check and store if we are on a SDL backend that supports SDL_GetGlobalMouseState() and SDL_CaptureMouse()
     // ("wayland" and "rpi" don't support it, but we chose to use a white-list instead of a black-list)
@@ -611,7 +621,7 @@ bool ImGui_ImplInit(Application app) {
     // Set platform dependent data in viewport
     // Our mouse update function expect PlatformHandle to be filled for the main viewport
     ImGuiViewport* mainViewport = igGetMainViewport();
-    ImGui_ImplSetupPlatformHandles(mainViewport, bd.mainWindow);
+    ImGui_ImplSetupPlatformHandles(mainViewport, bd.window);
 
     // From 2.0.5: Set SDL hint to receive mouse click events on window focus, otherwise SDL doesn't emit the event.
     // Without this, when clicking to gain focus, our widgets wouldn't activate even though they showed as hovered.

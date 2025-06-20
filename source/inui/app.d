@@ -7,7 +7,6 @@
     Authors: Luna Nielsen
 */
 module inui.app;
-import inui.core.window;
 import numem : nogc_delete, move;
 import std.exception : enforce;
 import std.string;
@@ -16,7 +15,11 @@ import sdl.events;
 import sdl.timer;
 
 public import nulib.string;
+import nulib.math : abs;
 import inui.core.settings;
+import inui.core.window;
+import inui.core.imgui;
+import inui.window;
 import inui.menu;
 
 /**
@@ -117,15 +120,18 @@ private:
     //
     //          APP STATE
     //
-    NativeWindow mainWindow_;
+    IGContext ig;
+    Window mainWindow_;
     Menu mainMenu_;
     void delegate(ref SDL_Event ev)[] handlers;
 
     int startEventLoop() {
-        long currTime = SDL_GetTicks();
+        long currTime = 0;
         while(mainWindow_ && !mainWindow_.isCloseRequested) {
             long prevTime = currTime;
             currTime = SDL_GetTicks();
+            float deltaTime = abs(cast(float)(currTime-prevTime)*0.001f);
+
             SDL_PumpEvents();
             SDL_Event ev;
             while(SDL_PollEvent(&ev)) {
@@ -135,13 +141,14 @@ private:
                 foreach(handler; handlers)
                     handler(ev);
 
+                ig.processEvent(&ev);
                 switch(ev.type) {
                     case SDL_EventType.SDL_EVENT_QUIT:
                         mainWindow_.close();
                         break;
 
                     case SDL_EventType.SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-                        if (auto window = NativeWindow.fromID(ev.window.windowID)) {
+                        if (auto window = Window.fromID(ev.window.windowID)) {
                             nogc_delete(window);
                         }
                         break;
@@ -151,9 +158,21 @@ private:
                 }
             }
 
-            foreach(NativeWindow window; NativeWindow.windows) {
+            // Skip rendering zero or negative delta
+            if (deltaTime <= 0)
+                continue;
+
+            foreach(Window window; Window.windows) {
+                
+                // Begin Frame
+                window.newFrame();
+                ig.beginFrame(window.backingWindow, deltaTime);
+
+                // Render and swap.
                 if (window.widget)
-                    window.widget.update(cast(float)(currTime-prevTime)*0.001);
+                    window.widget.update(deltaTime);
+                
+                ig.endFrame(window.backingWindow);
                 window.swap();
             }
         }
@@ -192,7 +211,7 @@ public:
     /**
         The app's main window.
     */
-    @property NativeWindow mainWindow() { return mainWindow_; }
+    @property Window mainWindow() { return mainWindow_; }
 
     /**
         The app's main menu.
@@ -221,14 +240,21 @@ public:
     /**
         Runs the application.
     */
-    int run(NativeWindow window, string[] args) {
+    int run(Window window, string[] args) {
         this.startArgs = args.length > 1 ? args[1..$] : null;
         this.exec = args.length > 0 ? args[0] : null;
 
         if (window) {
             this.mainWindow_ = window;
             this.mainWindow_.show();
-            return this.startEventLoop();
+            
+            // Initialize the UI Framework
+            ig = new IGContext();
+            this.mainWindow_.initImguiBacking();
+            
+            int ret = this.startEventLoop();
+            destroy(ig);
+            return ret;
         }
 
         this.handlers.length = 0;

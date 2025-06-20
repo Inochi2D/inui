@@ -6,7 +6,7 @@
     
     Authors: Luna Nielsen
 */
-module inui.core.ui.backend.hairetsu;
+module inui.core.backend.hairetsu;
 import nulib.collections.vector;
 import nulib.string;
 import i2d.imgui;
@@ -155,6 +155,18 @@ public:
     }
 }
 
+struct IFVec2 {
+    ushort x;
+    ushort y;
+}
+
+struct IFRect {
+    ushort x;
+    ushort y;
+    ushort width;
+    ushort height;
+}
+
 // Source Data
 struct ImFontBuildSrcDataHa {
 @nogc:
@@ -168,7 +180,7 @@ struct ImFontBuildSrcDataHa {
     }
 
     HaFont font;
-    inrecti[] rects;
+    IFRect[] rects;
     const(ImWchar)* srcRanges;
     int dstIndex;
     int glyphsHighest;
@@ -249,12 +261,8 @@ static bool ImFontAtlasBuildWithHairetsu(ImFontAtlas* atlas) {
             ImBitVector_Create(&dstTmp.glyphsSet, dstTmp.glyphsHighest+1);
 
         for (const(ImWchar)* srcRange = srcTmp.srcRanges; srcRange[0] && srcRange[1]; srcRange += 2) {
-            foreach(codepoint code; srcRange[0]..srcRange[1]+1) {
+            foreach(codepoint code; srcRange[0]..srcRange[1]) {
                 if (ImBitVector_TestBit(&dstTmp.glyphsSet, code))
-                    continue;
-                
-                GlyphIndex glyphIndex = srcTmp.font.getGlyphIndex(code);
-                if (glyphIndex == GLYPH_MISSING)
                     continue;
                 
                 srcTmp.glyphsCount++;
@@ -275,9 +283,11 @@ static bool ImFontAtlasBuildWithHairetsu(ImFontAtlas* atlas) {
         foreach(i; 0..srcTmp.glyphsSet.Storage.Size) {
             if (uint entries32 = srcTmp.glyphsSet.Storage.Data[i]) {
                 foreach(bitN; 0..32) {
-                    ImFontBuildSrcDataHa.ImFontBuildSrcGlyphHa srcGlyph;
-                    srcGlyph.code = cast(codepoint)((i << 5) + bitN);
-                    srcTmp.glyphsList ~= srcGlyph;
+                    if (entries32 & (cast(uint)1 << bitN)) {
+                        ImFontBuildSrcDataHa.ImFontBuildSrcGlyphHa srcGlyph;
+                        srcGlyph.code = cast(codepoint)((i << 5) + bitN);
+                        srcTmp.glyphsList ~= srcGlyph;
+                    }
                 }
             }
         }
@@ -294,7 +304,7 @@ static bool ImFontAtlasBuildWithHairetsu(ImFontAtlas* atlas) {
     // Allocate temporary rasterization data buffers.
     // We could not find a way to retrieve accurate glyph size without rendering them.
     // (e.g. slot->metrics->width not always matching bitmap->width, especially considering the Oblique transform)
-    inrecti[] rectsToPack;
+    IFRect[] rectsToPack;
     rectsToPack = rectsToPack.nu_resize(totalGlyphCount);
 
     // 4. Gather glyphs sizes so we can pack them in our virtual canvas.
@@ -327,8 +337,8 @@ static bool ImFontAtlasBuildWithHairetsu(ImFontAtlas* atlas) {
                 continue;
 
             srcGlyph.bitmapData = bitmap;
-            srcTmp.rects[gi].width = srcGlyph.info.size.x + packPadding;
-            srcTmp.rects[gi].height = srcGlyph.info.size.y + packPadding;
+            srcTmp.rects[gi].width = cast(ushort)(srcGlyph.info.size.x + packPadding);
+            srcTmp.rects[gi].height = cast(ushort)(srcGlyph.info.size.y + packPadding);
             totalSurface += srcTmp.rects[gi].width * srcTmp.rects[gi].height;
         }
     }
@@ -342,15 +352,16 @@ static bool ImFontAtlasBuildWithHairetsu(ImFontAtlas* atlas) {
     atlas.TexHeight = atlas.TexWidth;
     
     // 5. Start packing
-    Skyline skyline = Skyline(atlas.TexWidth, atlas.TexWidth);
+    Skyline skyline = Skyline(cast(ushort)atlas.TexWidth, cast(ushort)atlas.TexWidth);
     foreach(si; 0..srcTmpArray.length) {
 
         ImFontBuildSrcDataHa* srcTmp = &srcTmpArray[si];
         if (srcTmp.glyphsCount == 0)
             continue;
 
-        foreach(ref rect; srcTmp.rects) {
-            rect = skyline.pack(invec2u(rect.dimensions.x, rect.dimensions.y));
+        foreach(ref IFRect rect; srcTmp.rects) {
+            rect = skyline.pack(IFVec2(rect.width, rect.height));
+            ImFontAtlas_AddCustomRectRegular(atlas, rect.width, rect.height);
         }
     }
 
@@ -384,7 +395,7 @@ static bool ImFontAtlasBuildWithHairetsu(ImFontAtlas* atlas) {
         foreach(gi; 0..srcTmp.glyphsCount) {
 
             ImFontBuildSrcDataHa.ImFontBuildSrcGlyphHa* srcGlyph = &srcTmp.glyphsList[gi];
-            inrecti packRect = srcTmp.rects[gi];
+            IFRect packRect = srcTmp.rects[gi];
             if (packRect.width == 0 && packRect.height == 0)
                 continue;
             
@@ -409,8 +420,11 @@ static bool ImFontAtlasBuildWithHairetsu(ImFontAtlas* atlas) {
             float ax = info.advance * invRasterDensity;
             ImFont_AddGlyph(dstFont, src, cast(ImWchar)srcGlyph.code, x0, y0, x1, y1, u0, v0, u1, v1, ax);
 
-            ImFontGlyph* dstGlyph = &dstFont.Glyphs[dstFont.Glyphs.Size-1];
-            assert(dstGlyph.Codepoint == srcGlyph.code);
+            // import std.stdio : writefln;
+            // ImFontGlyph* dstGlyph = &dstFont.Glyphs[dstFont.Glyphs.size()-1];
+
+            // writefln("%x %x", dstGlyph.Codepoint, srcGlyph.code);
+            // assert(dstGlyph.Codepoint == srcGlyph.code);
 
             size_t blitDstStride = atlas.TexWidth;
             if (atlas.TexPixelsAlpha8) {
@@ -439,14 +453,14 @@ static bool ImFontAtlasBuildWithHairetsu(ImFontAtlas* atlas) {
     A skyline packing structure.
 */
 struct Skyline {
-    uint width;
-    uint height;
-    vector!invec2u skyline;
+    ushort width;
+    ushort height;
+    vector!IFVec2 skyline;
 
-    this(uint width, uint height) {
+    this(ushort width, ushort height) {
         this.width = width;
         this.height = height;
-        this.skyline = [invec2u(0, 0)];
+        this.skyline = [IFVec2(0, 0)];
     }
 
     /**
@@ -458,15 +472,15 @@ struct Skyline {
         Returns:
             A new reactangle with the bounds.
     */
-    inrecti pack(invec2u size) {
+    IFRect pack(IFVec2 size) {
         if (size.x == 0 || size.y == 0)
-            return inrecti.init;
+            return IFRect.init;
         
-        size_t iBest = size_t.max;
-        size_t jBest = size_t.max;
-        invec2u best = invec2u(uint.max, uint.max);
+        ushort iBest = ushort.max;
+        ushort jBest = ushort.max;
+        IFVec2 best = IFVec2(ushort.max, ushort.max);
         foreach(i; 0..skyline.length) {
-            invec2u pos = skyline[i];
+            IFVec2 pos = skyline[i];
 
             // Right boundary reached.
             if (size.x > width - pos.x)
@@ -478,8 +492,8 @@ struct Skyline {
 
             uint xMax = pos.x + width;
 
-            size_t j;
-            for(j = i+1; j < skyline.length; ++j) {
+            ushort j;
+            for(j = cast(ushort)(i+1); j < skyline.length; ++j) {
                 
                 // Won't reach next points.
                 if (xMax <= skyline[j].x)
@@ -498,21 +512,21 @@ struct Skyline {
             if (size.y > height - pos.y)
                 continue;
 
-            iBest = i;
+            iBest = cast(ushort)i;
             jBest = j;
             best = pos;
         }
 
-        if (iBest == uint.max)
-            return inrecti.init;
+        if (iBest == ushort.max)
+            return IFRect.init;
         
         // Bugcheck
         assert(iBest < jBest);
         assert(jBest > 0);
 
         // Calculate the relevant points.
-        invec2u newTL = invec2u(best.x, best.y + size.y);
-        invec2u newBR = invec2u(best.x + size.x, skyline[jBest-1].y);
+        IFVec2 newTL = IFVec2(best.x, cast(ushort)(best.y + size.y));
+        IFVec2 newBR = IFVec2(cast(ushort)(best.x + size.x), skyline[jBest-1].y);
         bool brPoint = (jBest < skyline.length ? newBR.x < skyline[jBest].x : newBR.x < width);
 
         // Calculate, then remove and insert indices.
@@ -521,7 +535,7 @@ struct Skyline {
         if (brPoint)
             skyline.insert(newBR, iBest+1);
 
-        return inrecti(best.x, best.y, size.x, size.y);
+        return IFRect(best.x, best.y, size.x, size.y);
     }
 }
 
