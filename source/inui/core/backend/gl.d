@@ -79,30 +79,6 @@ void incGLBackendNewFrame() {
         cast(void)incGLBackendCreateDeviceObjects();
 }
 
-void incGLBackendBeginRender(NativeWindow window) {
-    float uiScale = window.scale;
-    auto io = igGetIO();
-    auto vp = igGetMainViewport();
-
-    vp.WorkSize.x = ceil(cast(double) vp.WorkSize.x / cast(double) uiScale);
-    vp.WorkSize.y = ceil(cast(double) vp.WorkSize.y / cast(double) uiScale);
-    vp.Size.x = ceil(cast(double) vp.Size.x / cast(double) uiScale);
-    vp.Size.y = ceil(cast(double) vp.Size.y / cast(double) uiScale);
-
-    // NOTE:
-    // For some reason there's this weird offset added during scaling
-    // This magic number SOMEHOW works, and I don't know why
-    // I hate computers
-    //
-    // This only works with scaling up to 200%, after which it breaks
-    vp.WorkSize.y -= (26 + 10) * (uiScale - 1);
-
-    float mx, my;
-    SDL_GetMouseState(&mx, &my);
-    io.MousePos.x = mx / uiScale;
-    io.MousePos.y = my / uiScale;
-}
-
 static void incGLBackendSetupRenderState(ImDrawData* draw_data, float fb_width, float fb_height, GLuint vertex_array_object) {
 
     // Setup render state: alpha-blending enabled, no face culling, no depth testing, scissor enabled, polygon fill
@@ -161,6 +137,7 @@ void incGLBackendRenderDrawData(ImDrawData* draw_data) {
 
     // Make sure fb is appropriately cleared.
     glViewport(0, 0, cast(int)fb_width, cast(int)fb_height);
+    glClearColor(0, 0, 0, 0);
     glClear(GL_COLOR_BUFFER_BIT);
 
     // Backup GL state

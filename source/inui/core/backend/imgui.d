@@ -533,9 +533,16 @@ bool ImGui_ImplProcessEvent(const(SDL_Event)* event) {
 }
 
 void ImGui_ImplGetWindowSizeAndFramebufferScale(NativeWindow window, ref ImVec2 outSize, ref ImVec2 outScale) {
-    vec2i size = window.isVisible ? window.pxSize : vec2i(0, 0);
+    vec2i size = window.ptSize;
+    vec2i displaySize = window.pxSize;
+    if (!window.isVisible) {
+        outSize = ImVec2(0, 0);
+        outSize = ImVec2(1, 1);
+        return;
+
+    }
     outSize = ImVec2(size.x, size.y);
-    outScale = ImVec2(window.scale, window.scale);
+    outScale = ImVec2(displaySize.x / size.x, displaySize.y / size.y);
 }
 
 void ImGui_ImplNewFrame(NativeWindow window, float deltaTime) {

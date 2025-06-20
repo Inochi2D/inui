@@ -15,16 +15,64 @@ import sdl;
 import sdl.rect;
 
 /**
+    A system theme
+*/
+enum SystemTheme : SDL_SystemTheme {
+    
+    /**
+        Unknown system theme
+    */
+    unknown = SDL_SystemTheme.SDL_SYSTEM_THEME_UNKNOWN,
+    
+    /**
+        Light colored system theme
+    */
+    light = SDL_SystemTheme.SDL_SYSTEM_THEME_LIGHT,
+    
+    /**
+        Dark colored system theme
+    */
+    dark = SDL_SystemTheme.SDL_SYSTEM_THEME_DARK
+}
+
+/**
+    Vibrancy effect state
+*/
+enum SystemVibrancy : int {
+
+    /**
+        No system vibrancy.
+    */
+    none,
+
+    /**
+        Basic vibrancy, the background and possibly windows
+        are blurred into the window frame.
+    */
+    normal,
+
+    /**
+        Vivid vibrancy, the colors of the background
+        and their windows are blurred into the main
+        window far more. Giving a very vibrant look.
+    */
+    vivid
+}
+
+/**
     A window
 */
 class NativeWindow : NuObject {
 private:
 @nogc:
     __gshared weak_vector!NativeWindow windows_;
-
     SDL_Window* handle;
     GLContext glctx;
     bool closeRequested = false;
+    SystemVibrancy vibrancy_;
+
+    // Base SDL flags to apply.
+    enum ulong BASE_FLAGS = SDL_WindowFlags.SDL_WINDOW_OPENGL | SDL_WindowFlags.SDL_WINDOW_HIDDEN;
 
     T getProperty(T)(string key, T defaultValue = T.init) {
         import sdl.properties;
@@ -78,7 +126,13 @@ private:
         return SDL_GLContext.init;
     }
 
-    enum ulong BASE_FLAGS = SDL_WindowFlags.SDL_WINDOW_OPENGL | SDL_WindowFlags.SDL_WINDOW_HIDDEN;
+    // Helper that runs OS init hooks.
+    void runOsInitHooks() {
+        version(Windows) {
+            import inui.core.backend.win32 : uiWin32SetupDPIFor;
+            uiWin32SetupDPIFor(this);
+        }
+    }
 
 public:
 
@@ -168,6 +222,21 @@ public:
                 return wlsurface;
             return cast(void*)this.getProperty!size_t(SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
         } else static assert(0, "Platform not supported.");
+    }
+
+    /**
+        Whether the window has a vibrancy effect.
+    */
+    @property SystemVibrancy vibrancy() { return vibrancy_; }
+    @property auto vibrancy(SystemVibrancy value) {
+        version(Windows) {
+            import inui.core.backend.win32 : uiWin32SetVibrancy;
+            if (uiWin32SetVibrancy(this, value)) {
+                this.vibrancy_ = value;
+            }
+        }
+
+        return this;
     }
 
     /**
@@ -313,6 +382,7 @@ public:
         assert(handle, "Failed creating NativeWindow handle");
         this.handle = handle;
         this.glctx = GLContext.fromWindow(this);
+        this.runOsInitHooks();
     }
 
     /**
@@ -524,27 +594,6 @@ public:
             cast(SDL_WindowFlags)(SDL_WindowFlags.SDL_WINDOW_POPUP_MENU | BASE_FLAGS | flags)
         ));
     }
-}
-
-/**
-    A system theme
-*/
-enum SystemTheme : SDL_SystemTheme {
-    
-    /**
-        Unknown system theme
-    */
-    unknown = SDL_SystemTheme.SDL_SYSTEM_THEME_UNKNOWN,
-    
-    /**
-        Light colored system theme
-    */
-    light = SDL_SystemTheme.SDL_SYSTEM_THEME_LIGHT,
-    
-    /**
-        Dark colored system theme
-    */
-    dark = SDL_SystemTheme.SDL_SYSTEM_THEME_DARK
 }
 
 /**

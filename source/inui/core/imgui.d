@@ -54,8 +54,6 @@ public:
         incGLBackendNewFrame();
         ImGui_ImplNewFrame(window, deltaTime);
         igNewFrame();
-
-        incGLBackendBeginRender(window);
     }
 
     void endFrame(NativeWindow window) {

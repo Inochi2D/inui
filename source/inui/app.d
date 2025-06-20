@@ -99,22 +99,31 @@ private:
     // SDL Init routine.
     void initSDL() {
         SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO);
-
-        // Setup DPI Awareness.
-        version(Windows) {
-            import inui.core.backend.win32 : uiSetWin32DPIAwareness;
-            uiSetWin32DPIAwareness();
-        }
     }
 
     // Init routine.
     void initialize() {
         enforce(!__sharedApplication, "There's already an existing application instance!");
 
+        // Setup Win32 Integration
+        version(Windows) {
+            import inui.core.backend.win32 : uiWin32Init;
+            uiWin32Init();
+        }
+
         this.applyInfo();
         this.initSDL();
         this.initStore();
         __sharedApplication = this;
+    }
+
+    void shutdown() {
+
+        // Shutdown Win32 Integration
+        version(Windows) {
+            import inui.core.backend.win32 : uiWin32Shutdown;
+            uiWin32Shutdown();
+        }
     }
 
     //
@@ -222,6 +231,7 @@ public:
         Destructor
     */
     ~this() {
+        this.shutdown();
         nogc_delete(info);
         __sharedApplication = null;
     }

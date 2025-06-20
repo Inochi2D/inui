@@ -15,7 +15,7 @@ import inmath;
 import numem;
 
 // Re-exported symbols
-public import inui.core.window : SystemTheme;
+public import inui.core.window : SystemTheme, SystemVibrancy;
 
 /**
     A window
@@ -51,6 +51,15 @@ public:
         The backing native window.
     */
     @property NativeWindow backingWindow() { return backing; }
+    
+    /**
+        Whether the window has a vibrancy effect.
+    */
+    @property SystemVibrancy vibrancy() { return backing.vibrancy; }
+    @property auto vibrancy(SystemVibrancy value) {
+        backing.vibrancy = value;
+        return this;
+    }
 
     /**
         The title of the window
