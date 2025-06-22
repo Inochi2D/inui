@@ -12,22 +12,6 @@ import core.sys.windows.windows;
 import core.sys.windows.winuser;
 import inui.core.window;
 
-// Windows 8.1+ DPI awareness context enum
-enum DPIAwarenessContext : ptrdiff_t { 
-    DPI_AWARENESS_CONTEXT_UNAWARE = -1,
-    DPI_AWARENESS_CONTEXT_SYSTEM_AWARE = -2,
-    DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE = -3,
-    DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = -4
-}
-
-// Windows 8.1+ DPI awareness enum
-enum ProcessDPIAwareness { 
-    DPI_AWARENESS_INVALID           = -1,
-    DPI_AWARENESS_UNAWARE           = 0,
-    DPI_AWARENESS_SYSTEM_AWARE      = 1,
-    DPI_AWARENESS_PER_MONITOR_AWARE = 2
-}
-
 // DWM Window Attributes
 enum DwmWindowAttribute : uint {
     DWMWA_NCRENDERING_ENABLED,
@@ -82,26 +66,12 @@ struct DwmBlurBehind {
 void uiWin32Shutdown() @nogc {
 
     // Unload the DLLs
-    if (userDLL) SDL_UnloadObject(userDLL);
-    if (shcoreDLL) SDL_UnloadObject(shcoreDLL);
     if (dwmapiDLL) SDL_UnloadObject(dwmapiDLL);
 
 }
 
 void uiWin32Init() @nogc {
-    userDLL = SDL_LoadObject("USER32.DLL");
-    shcoreDLL = SDL_LoadObject("SHCORE.DLL");
     dwmapiDLL = SDL_LoadObject("dwmapi.dll");
-
-    if (shcoreDLL) {
-        dpiAwareFunc81 = cast(typeof(dpiAwareFunc81)) SDL_LoadFunction(shcoreDLL, "SetProcessDpiAwareness");
-    }
-
-    if (userDLL) {
-        dpiAwareFunc8 = cast(typeof(dpiAwareFunc8)) SDL_LoadFunction(userDLL, "SetProcessDPIAware");
-        dpiAwareFuncCtx10 = cast(typeof(dpiAwareFuncCtx10)) SDL_LoadFunction(userDLL, "SetProcessDpiAwarenessContext");
-        enableNonClientDpiScalingFunc = cast(typeof(enableNonClientDpiScalingFunc)) SDL_LoadFunction(userDLL, "EnableNonClientDpiScaling");
-    }
 
     if (dwmapiDLL) {
         dwmExtendFrameIntoClientAreaFunc = 
@@ -114,28 +84,6 @@ void uiWin32Init() @nogc {
             cast(typeof(dwmEnableBlurBehindWindowFunc))SDL_LoadFunction(dwmapiDLL, "DwmEnableBlurBehindWindow");
     }
 
-    // This is process-wide.
-    uiSetWin32DPIAwareness();
-}
-
-void uiSetWin32DPIAwareness() @nogc {
-
-    if (dpiAwareFuncCtx10) {
-        if (!dpiAwareFuncCtx10(DPIAwarenessContext.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2)) {
-            cast(void)dpiAwareFuncCtx10(DPIAwarenessContext.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE);
-        }
-    } else if (dpiAwareFunc81) {
-        cast(void)dpiAwareFunc81(ProcessDPIAwareness.DPI_AWARENESS_PER_MONITOR_AWARE);
-    } else if (dpiAwareFunc8) {
-        cast(void)dpiAwareFunc8();
-    }      
-}
-
-void uiWin32SetupDPIFor(NativeWindow window) @nogc {
-
-    // Try to make non-client-area scaled.
-    if (enableNonClientDpiScalingFunc)
-        cast(void)enableNonClientDpiScalingFunc(window.nativeHandle);
 }
 
 bool uiWin32SetVibrancy(NativeWindow window, SystemVibrancy vibrancy) @nogc {
@@ -178,14 +126,8 @@ bool uiWin32SetVibrancy(NativeWindow window, SystemVibrancy vibrancy) @nogc {
 }
 
 private __gshared {
-    SDL_SharedObject* userDLL;
-    SDL_SharedObject* shcoreDLL;
     SDL_SharedObject* dwmapiDLL;
 
-    extern(Windows) @nogc bool function() dpiAwareFunc8;
-    extern(Windows) @nogc HRESULT function(ProcessDPIAwareness) dpiAwareFunc81;
-    extern(Windows) @nogc bool function(DPIAwarenessContext) dpiAwareFuncCtx10;
-    extern(Windows) @nogc bool function(HWND) enableNonClientDpiScalingFunc;
     extern(Windows) @nogc HRESULT function(HWND, const(DwmMargins)*) dwmExtendFrameIntoClientAreaFunc;
     extern(Windows) @nogc HRESULT function(HWND, DwmWindowAttribute, void*, uint) dwmSetWindowAttributeFunc;
     extern(Windows) @nogc HRESULT function(HWND, const(DwmBlurBehind)*) dwmEnableBlurBehindWindowFunc;

@@ -73,7 +73,7 @@ private:
     SystemVibrancy vibrancy_;
 
     // Base SDL flags to apply.
-    enum ulong BASE_FLAGS = SDL_WindowFlags.SDL_WINDOW_OPENGL | SDL_WindowFlags.SDL_WINDOW_HIDDEN;
+    enum ulong BASE_FLAGS = SDL_WindowFlags.SDL_WINDOW_OPENGL | SDL_WindowFlags.SDL_WINDOW_HIDDEN | SDL_WindowFlags.SDL_WINDOW_HIGH_PIXEL_DENSITY;
 
     T getProperty(T)(string key, T defaultValue = T.init) {
         import sdl.properties;
@@ -98,12 +98,7 @@ private:
     }
 
     // Helper that runs OS init hooks.
-    void runOsInitHooks() {
-        version(Windows) {
-            import inui.core.backend.win32 : uiWin32SetupDPIFor;
-            uiWin32SetupDPIFor(this);
-        }
-    }
+    void runOsInitHooks() { }
 
 public:
 

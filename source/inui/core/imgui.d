@@ -34,6 +34,8 @@ private:
     SDL_Cursor* lastCursor;
     int mouseButtonsDown;
     int pendingLeaveFrame;
+    float lastScale;
+    vec2i lastSize;
 
     // Gets the window and framebuffer scale.
     void getWindowSizeAndFbScale(ref ImVec2 outSize, ref ImVec2 outScale) {
@@ -77,6 +79,13 @@ private:
         }
     }
 
+    void updateCursor() {
+        if (cursors[igGetMouseCursor()] !is lastCursor) {
+            lastCursor = cursors[igGetMouseCursor()];
+            SDL_SetCursor(lastCursor);
+        }
+    }
+
     void setupPlatform() {
         ImGuiPlatformIO* platformIO = igGetPlatformIO(ctx);
 
@@ -104,8 +113,8 @@ private:
         this.cursors[ImGuiMouseCursor.ResizeNWSE] = SDL_CreateSystemCursor(SDL_SystemCursor.SDL_SYSTEM_CURSOR_NWSE_RESIZE);
         this.cursors[ImGuiMouseCursor.Hand] = SDL_CreateSystemCursor(SDL_SystemCursor.SDL_SYSTEM_CURSOR_POINTER);
         this.cursors[ImGuiMouseCursor.NotAllowed] = SDL_CreateSystemCursor(SDL_SystemCursor.SDL_SYSTEM_CURSOR_NOT_ALLOWED);
-        // this.cursors[ImGuiMouseCursor.Wait] = SDL_CreateSystemCursor(SDL_SystemCursor.SDL_SYSTEM_CURSOR_WAIT);
-        // this.cursors[ImGuiMouseCursor.Progress] = SDL_CreateSystemCursor(SDL_SystemCursor.SDL_SYSTEM_CURSOR_PROGRESS);
+        this.cursors[ImGuiMouseCursor.Wait] = SDL_CreateSystemCursor(SDL_SystemCursor.SDL_SYSTEM_CURSOR_WAIT);
+        this.cursors[ImGuiMouseCursor.Progress] = SDL_CreateSystemCursor(SDL_SystemCursor.SDL_SYSTEM_CURSOR_PROGRESS);
         
         igSetCurrentContext(ctx);
         ImGuiViewport* viewport = igGetMainViewport();
@@ -409,12 +418,17 @@ private:
     //
     //      FONTS
     //
-    ImFontLoader fontLoader_;
+    ImFontLoader sharedFontLoader;
+    ImFontLoader singleFontLoader;
 
     void setupFonts() {
-        fontLoader_.Name = "Hairetsu";
-        fontLoader_.FontBakedSrcLoaderDataSize = HaFace.sizeof;
-        fontLoader_.FontSrcInit = (ImFontAtlas* atlas, ImFontConfig* src) {
+        sharedFontLoader.Name = "Hairetsu (Shared)";
+        sharedFontLoader.FontBakedSrcLoaderDataSize = HaFace.sizeof;
+        sharedFontLoader.LoaderInit = (ImFontAtlas* atlas) {
+            atlas.FontLoaderName = "Hairetsu (Shared)";
+            return true;
+        };
+        sharedFontLoader.FontSrcInit = (ImFontAtlas* atlas, ImFontConfig* src) {
             if (HaFile file = HaFile.fromMemory(cast(ubyte[])src.FontData[0..src.FontDataSize])) {
                 src.FontLoaderData = cast(void*)file;
                 
@@ -425,20 +439,25 @@ private:
             }
             return false;
         };
-        fontLoader_.FontSrcDestroy = (ImFontAtlas* atlas, ImFontConfig* src) {
+        sharedFontLoader.FontSrcDestroy = (ImFontAtlas* atlas, ImFontConfig* src) {
             if (src.FontLoaderData) {
                 src.FontLoaderData = cast(void*)(cast(HaFile)src.FontLoaderData).release();
             }
         };
-        fontLoader_.FontSrcContainsGlyph = (ImFontAtlas* atlas, ImFontConfig* src, ImWchar code) {
+        sharedFontLoader.FontSrcContainsGlyph = (ImFontAtlas* atlas, ImFontConfig* src, ImWchar code) {
             HaFont font = (cast(HaFile)src.FontLoaderData).fonts[src.FontNo];
             return font.charMap.hasCodepoint(code);
         };
-        fontLoader_.FontBakedInit = (ImFontAtlas* atlas, ImFontConfig* src, ImFontBaked* baked, void* lddata) {
+        sharedFontLoader.FontBakedInit = (ImFontAtlas* atlas, ImFontConfig* src, ImFontBaked* baked, void* lddata) {
             float size = baked.Size;
             HaFont font = (cast(HaFile)src.FontLoaderData).fonts[src.FontNo];
             HaFace face = font.createFace();
             *(cast(HaFace*)lddata) = face;
+
+            // Set name.
+            size_t nameSize = min(font.name.length, ImFontConfig.Name.length);
+            src.Name[0..$] = '\0';
+            src.Name[0..nameSize] = font.name[0..nameSize];
 
             face.pt = size;
             if (!src.MergeMode) {
@@ -448,10 +467,10 @@ private:
             }
             return true;
         };
-        fontLoader_.FontBakedDestroy = (ImFontAtlas* atlas, ImFontConfig* src, ImFontBaked* baked, void* lddata) {
+        sharedFontLoader.FontBakedDestroy = (ImFontAtlas* atlas, ImFontConfig* src, ImFontBaked* baked, void* lddata) {
             *(cast(HaFace*)lddata) = (*cast(HaFace*)lddata).released();
         };
-        fontLoader_.FontBakedLoadGlyph = (ImFontAtlas* atlas, ImFontConfig* src, ImFontBaked* baked, void* lddata, ImWchar code, ImFontGlyph* dst) {
+        sharedFontLoader.FontBakedLoadGlyph = (ImFontAtlas* atlas, ImFontConfig* src, ImFontBaked* baked, void* lddata, ImWchar code, ImFontGlyph* dst) {    
             HaFont font = (cast(HaFile)src.FontLoaderData).fonts[src.FontNo];
             uint glyphId = font.charMap.getGlyphIndex(code);
             if (glyphId == GLYPH_MISSING)
@@ -459,12 +478,12 @@ private:
             
             HaFace face = *cast(HaFace*)lddata;
             HaGlyph glyph = face.getGlyph(glyphId, HaGlyphType.outline);
-            if (!glyph.hasData)
-                return false;
             
             // Basic data.
             dst.Codepoint = code;
             dst.AdvanceX = glyph.metrics.advance.x;
+            if (!glyph.hasData)
+                return true;
 
             // Copy bitmap data.
             HaBitmap bitmap = glyph.rasterize();
@@ -510,10 +529,95 @@ private:
             );
             return true;
         };
-        fontLoader_.LoaderInit = (ImFontAtlas* atlas) {
-            printf("LoaderInit %p\n", atlas);
-            atlas.FontLoaderName = "Hairetsu";
+        io.Fonts.FontLoader = &sharedFontLoader;
+
+        // Single-font loader.
+        singleFontLoader.Name = "Hairetsu (Single)";
+        singleFontLoader.FontBakedSrcLoaderDataSize = HaFace.sizeof;
+        singleFontLoader.FontSrcContainsGlyph = (ImFontAtlas* atlas, ImFontConfig* src, ImWchar code) {
+            HaFont font = *cast(HaFont*)src.FontData;
+            return font.charMap.hasCodepoint(code);
+        };
+        singleFontLoader.FontBakedInit = (ImFontAtlas* atlas, ImFontConfig* src, ImFontBaked* baked, void* lddata) {
+            float size = baked.Size;
+            HaFont font = *cast(HaFont*)src.FontData;
+            HaFace face = font.createFace();
+            *(cast(HaFace*)lddata) = face;
+
+            // Set name.
+            size_t nameSize = min(font.name.length, ImFontConfig.Name.length);
+            src.Name[0..$] = '\0';
+            src.Name[0..nameSize] = font.name[0..nameSize];
+
+            face.pt = size;
+            if (!src.MergeMode) {
+                HaMetrics fmetrics = face.faceMetrics;
+                baked.Ascent = ceil(fmetrics.ascender.x);
+                baked.Descent = ceil(fmetrics.descender.x);
+            }
             return true;
+        };
+        singleFontLoader.FontBakedLoadGlyph = (ImFontAtlas* atlas, ImFontConfig* src, ImFontBaked* baked, void* lddata, ImWchar code, ImFontGlyph* dst) {    
+            HaFont font = *cast(HaFont*)src.FontData;
+            uint glyphId = font.charMap.getGlyphIndex(code);
+            if (glyphId == GLYPH_MISSING)
+                return false;
+            
+            HaFace face = *cast(HaFace*)lddata;
+            HaGlyph glyph = face.getGlyph(glyphId, HaGlyphType.outline);
+            
+            // Basic data.
+            dst.Codepoint = code;
+            dst.AdvanceX = glyph.metrics.advance.x;
+            if (!glyph.hasData)
+                return true;
+
+            // Copy bitmap data.
+            HaBitmap bitmap = glyph.rasterize();
+            bitmap.crop(1, 1, bitmap.width-1, bitmap.height-1);
+            int w = cast(int)bitmap.width;
+            int h = cast(int)bitmap.height;
+            if (w == 0 || h == 0) {
+                bitmap.free();
+                return false;
+            }
+
+            atlas.Builder.TempBuffer.resize(w*h);
+            atlas.Builder.TempBuffer.Data[0..atlas.Builder.TempBuffer.Size] = cast(char[])bitmap.data[0..$];
+            bitmap.free();
+
+            // Pack glyph.
+            ImFontAtlasRectId packId = igImFontAtlasPackAddRect(atlas, w, h);
+            if (packId == -1)
+                return false;
+            
+            ImTextureRect* packRect = igImFontAtlasPackGetRect(atlas, packId);
+            float baselineY = baked.Size - glyph.metrics.bounds.yMin;
+            float baselineX = glyph.metrics.bounds.xMin;
+
+            // Generate and add glyph.
+            dst.X0 = baselineX;
+            dst.Y0 = baselineY - h;
+            dst.X1 = baselineX + w;
+            dst.Y1 = baselineY;
+            dst.Visible = true;
+            dst.Colored = false;
+            dst.PackId = packId;
+            igImFontAtlasBakedSetFontGlyphBitmap(
+                atlas,
+                baked,
+                src,
+                dst,
+                packRect,
+                atlas.Builder.TempBuffer.Data,
+                ImTextureFormat.Alpha8,
+                bitmap.width
+            );
+            return true;
+        };
+        singleFontLoader.FontBakedDestroy = (ImFontAtlas* atlas, ImFontConfig* src, ImFontBaked* baked, void* lddata) {
+            *(cast(HaFace*)lddata) = (*cast(HaFace*)lddata).released();
+            *(cast(HaFont*)src.FontData) = (*cast(HaFont*)src.FontData).released();
         };
     }
 
@@ -521,11 +625,15 @@ private:
     //      General Implementation
     //
     void create() {
+        this.lastSize = window.ptSize;
+        this.lastScale = window.scale;
         this.ctx = igCreateContext();
         igSetCurrentContext(ctx);
 
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
         io.ConfigWindowsResizeFromEdges = true;
+        io.ConfigWindowsMoveFromTitleBarOnly = true;
+        io.ConfigInputTextCursorBlink = true;
         version(OSX) io.ConfigMacOSXBehaviors = true;
 
         this.setupPlatform();
@@ -545,11 +653,6 @@ public:
         ImGui IO Handler for this context.
     */
     @property ImGuiIO* io() { return igGetIO(ctx); }
-
-    /**
-        The backend's font loader.
-    */
-    @property ImFontLoader* fontLoader() { return &fontLoader_; }
 
     /**
         Destructor
@@ -572,6 +675,33 @@ public:
     */
     bool processEvent(const(SDL_Event)* event) {
         switch (event.type) {
+            case SDL_EventType.SDL_EVENT_WINDOW_DISPLAY_CHANGED:
+                if (event.window.windowID != window.id)
+                    return false;
+                
+                ImGuiStyle* style = igGetStyle();
+                float scale = window.scale;
+                float relScale = scale / lastScale;
+                
+                // Rescale windows and fonts.
+                igScaleWindowsInViewport(cast(ImGuiViewportP*)igGetMainViewport(), relScale);
+                style.FontScaleDpi = scale;
+                window.ptSize = vec2i(
+                    cast(int)(lastSize.x * relScale), 
+                    cast(int)(lastSize.y * relScale)
+                );
+
+                this.lastScale = scale;
+                this.lastSize = window.ptSize;
+                return true;
+            
+            case SDL_EventType.SDL_EVENT_WINDOW_RESIZED:
+                if (event.window.windowID != window.id)
+                    return false;
+                
+                lastSize = vec2i(event.window.data1, event.window.data2);
+                return true;
+
             case SDL_EventType.SDL_EVENT_MOUSE_MOTION:
                 if (event.motion.windowID != window.id)
                     return false;
@@ -692,6 +822,8 @@ public:
     void beginFrame(NativeWindow window, float deltaTime) {
         this.platformNewFrame(io, deltaTime);
         igNewFrame();
+
+        this.updateCursor();
     }
 
     /**
@@ -708,6 +840,27 @@ public:
     void makeCurrent() {
         window.gl.makeCurrent();
         igSetCurrentContext(ctx);
+    }
+    
+    /**
+        Adds a font file to the context.
+    */
+    void addFontFile(HaFile file) {
+        import nulib.math : min;
+
+        foreach(ref HaFont subfont; file.fonts) {
+            ImFontConfig src;
+            src.RasterizerDensity = 1.0;
+            src.FontLoader = &singleFontLoader;
+            src.OversampleH = 1;
+            src.OversampleV = 1;
+            src.SizePixels = 14;
+            src.FontDataOwnedByAtlas = false;
+            src.FontDataSize = HaFont.sizeof;
+            src.FontData = nu_malloc(src.FontDataSize);
+            (cast(HaFont*)src.FontData)[0] = subfont;
+            ImFontAtlas_AddFont(io.Fonts, &src);
+        }
     }
 }
 
