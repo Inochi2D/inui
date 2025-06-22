@@ -15,7 +15,7 @@ dependency "i2d-opengl" version="1.0.0"
 dependency "i18n-d" version="~>1.0.2"
 dependency "inmath" version="~>1.3.0"
 
-versions "USE_SDL2" "USE_GL" "SDL_2020" "USE_OpenGL3"
+versions "USE_SDL2" "USE_GL" "SDL_2020" "USE_OpenGL3" "GL_46"
 
 stringImportPaths "res/"
 
