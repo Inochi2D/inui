@@ -202,6 +202,7 @@ public:
         this.context = new IGContext(backing);
         this.workspace = new ImWorkspace(this);
         __active_windows ~= this;
+        SDL_SetEventFilter(&__Inui_Window_EventFilter, cast(void*)this);
     }
 
     /**
@@ -312,4 +313,32 @@ public:
         Requests that the NativeWindow be closed.
     */
     void close() { backing.close(); }
+}
+
+
+//
+//          INTERNAL IMPLEMENTATION DETAILS.
+//
+private:
+
+extern(C)
+bool __Inui_Window_EventFilter(void* userdata, SDL_Event* event) @nogc nothrow {
+    return assumeNoThrowNoGC((void* userdata, SDL_Event* event) {
+        if (event.window.windowID == (cast(Window)userdata).backingWindow.id) {
+            switch(event.type) {
+                case SDL_EventType.SDL_EVENT_WINDOW_EXPOSED:
+                    (cast(Window)userdata).update(0.0016f);
+                    break;
+                    
+                case SDL_EventType.SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
+                    (cast(Window)userdata).processEvent(event);
+                    break;
+                
+                default:
+                    break;
+            }
+        }
+
+        return true;
+    }, userdata, event);
 }

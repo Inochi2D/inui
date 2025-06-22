@@ -128,7 +128,7 @@ bool uiWin32SetVibrancy(NativeWindow window, SystemVibrancy vibrancy) @nogc {
 private __gshared {
     SDL_SharedObject* dwmapiDLL;
 
-    extern(Windows) @nogc HRESULT function(HWND, const(DwmMargins)*) dwmExtendFrameIntoClientAreaFunc;
-    extern(Windows) @nogc HRESULT function(HWND, DwmWindowAttribute, void*, uint) dwmSetWindowAttributeFunc;
-    extern(Windows) @nogc HRESULT function(HWND, const(DwmBlurBehind)*) dwmEnableBlurBehindWindowFunc;
+    extern(Windows) @nogc nothrow HRESULT function(HWND, const(DwmMargins)*) dwmExtendFrameIntoClientAreaFunc;
+    extern(Windows) @nogc nothrow HRESULT function(HWND, DwmWindowAttribute, void*, uint) dwmSetWindowAttributeFunc;
+    extern(Windows) @nogc nothrow HRESULT function(HWND, const(DwmBlurBehind)*) dwmEnableBlurBehindWindowFunc;
 }

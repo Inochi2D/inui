@@ -51,7 +51,7 @@ private:
         outScale = ImVec2(displaySize.x / size.x, displaySize.y / size.y);
     }
 
-    void updateKeyModifiers(ImGuiIO* io, SDL_Keymod sdlKeyMods) {
+    void updateKeyModifiers(ImGuiIO* io, SDL_Keymod sdlKeyMods) nothrow {
         ImGuiIO_AddKeyEvent(io, ImGuiKey.ImGuiMod_Ctrl, (sdlKeyMods & SDL_Keymod.KMOD_CTRL) != 0);
         ImGuiIO_AddKeyEvent(io, ImGuiKey.ImGuiMod_Shift, (sdlKeyMods & SDL_Keymod.KMOD_SHIFT) != 0);
         ImGuiIO_AddKeyEvent(io, ImGuiKey.ImGuiMod_Alt, (sdlKeyMods & SDL_Keymod.KMOD_ALT) != 0);
@@ -675,14 +675,16 @@ public:
     */
     bool processEvent(const(SDL_Event)* event) {
         switch (event.type) {
-            case SDL_EventType.SDL_EVENT_WINDOW_DISPLAY_CHANGED:
+            case SDL_EventType.SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
                 if (event.window.windowID != window.id)
                     return false;
                 
                 ImGuiStyle* style = igGetStyle();
                 float scale = window.scale;
                 float relScale = scale / lastScale;
-                
+                if (relScale == 1)
+                    return false;
+
                 // Rescale windows and fonts.
                 igScaleWindowsInViewport(cast(ImGuiViewportP*)igGetMainViewport(), relScale);
                 style.FontScaleDpi = scale;
@@ -899,7 +901,6 @@ void __Inui_PlatformSetImeData(ImGuiContext* ctx, ImGuiViewport* viewport, ImGui
     }
 }
 
-private
 ImGuiKey toImGuiKey(SDL_Keycode keycode) @nogc nothrow {
     switch (keycode) {
         case SDL_Keycode.SDLK_TAB:
@@ -1103,7 +1104,6 @@ ImGuiKey toImGuiKey(SDL_Keycode keycode) @nogc nothrow {
     }
 }
 
-private
 ImGuiKey toImGuiKey(SDL_Scancode scancode) @nogc nothrow {
     // Keypad doesn't have individual key values in SDL3
     switch (scancode) {
