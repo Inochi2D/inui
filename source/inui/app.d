@@ -129,7 +129,6 @@ private:
     //
     //          APP STATE
     //
-    IGContext ig;
     Window mainWindow_;
     Menu mainMenu_;
     void delegate(ref SDL_Event ev)[] handlers;
@@ -150,7 +149,11 @@ private:
                 foreach(handler; handlers)
                     handler(ev);
 
-                ig.processEvent(&ev);
+                // Window events have precdence over main events.
+                foreach(Window window; Window.windows) {
+                    window.processEvent(&ev);
+                }
+                
                 switch(ev.type) {
                     case SDL_EventType.SDL_EVENT_QUIT:
                         mainWindow_.close();
@@ -172,17 +175,7 @@ private:
                 continue;
 
             foreach(Window window; Window.windows) {
-                
-                // Begin Frame
-                window.newFrame();
-                ig.beginFrame(window.backingWindow, deltaTime);
-
-                // Render and swap.
-                if (window.widget)
-                    window.widget.update(deltaTime);
-                
-                ig.endFrame(window.backingWindow);
-                window.swap();
+                window.update(deltaTime);
             }
         }
         return 0;
@@ -258,12 +251,7 @@ public:
             this.mainWindow_ = window;
             this.mainWindow_.show();
             
-            // Initialize the UI Framework
-            ig = new IGContext();
-            this.mainWindow_.initImguiBacking();
-            
             int ret = this.startEventLoop();
-            destroy(ig);
             return ret;
         }
 

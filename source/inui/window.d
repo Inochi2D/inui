@@ -8,11 +8,12 @@
 */
 module inui.window;
 import std.algorithm.mutation : remove;
-import inui.core.backend.imgui;
-import inui.widgets.widget;
 import inui.core.window;
+import inui.core.imgui;
+import inui.widgets;
 import inmath;
 import numem;
+import sdl;
 
 // Re-exported symbols
 public import inui.core.window : SystemTheme, SystemVibrancy;
@@ -23,7 +24,7 @@ public import inui.core.window : SystemTheme, SystemVibrancy;
 class Window {
 private:
     NativeWindow backing;
-    GLContext gl;
+    IGContext context;
 
     __gshared Window[] __active_windows;
     ptrdiff_t getIndex() {
@@ -39,13 +40,18 @@ public:
     /**
         The root level widget of the window.
     */
-    Widget widget;
+    ImWorkspace workspace;
 
     /**
         All currently active windows.
     */
     static
     @property Window[] windows() { return __active_windows; }
+
+    /**
+        This Window's ImGui context.
+    */
+    @property IGContext imgui() { return context; }
 
     /**
         The backing native window.
@@ -193,22 +199,28 @@ public:
     */
     this(string title, int width, int height, ulong flags = 0) {
         this.backing = nogc_new!NativeWindow(title, vec2i(width, height), flags);
-        this.gl = backing.gl;
+        this.context = new IGContext(backing);
+        this.workspace = new ImWorkspace(this);
         __active_windows ~= this;
     }
 
     /**
-        Initializes the imgui backing.
+        Processes an event.
     */
-    void initImguiBacking() {
-        ImGui_ImplInit(backing);
+    bool processEvent(const(SDL_Event)* event) {
+        return context.processEvent(event);
     }
 
     /**
         Starts rendering a new frame in the window.
     */
-    void newFrame() {
-        cast(void)gl.makeCurrent();
+    void update(float deltaTime) {
+        context.makeCurrent();
+
+        context.beginFrame(backing, deltaTime);
+            workspace.update(deltaTime);
+        context.endFrame(backing);
+        this.swap();
     }
 
     /**

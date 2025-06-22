@@ -102,7 +102,6 @@ struct StyleVariant {
         style.LogSliderDeadzone             = metrics.tryGet!float("log_slider_deadzone",                         DEFAULT.LogSliderDeadzone);
         style.TabRounding                   = metrics.tryGet!float("tab_rounding",                                DEFAULT.TabRounding);
         style.TabBorderSize                 = metrics.tryGet!float("tab_border_size",                             DEFAULT.TabBorderSize);
-        style.TabMinWidthForCloseButton     = metrics.tryGet!float("tab_min_width_for_close_button",              DEFAULT.TabMinWidthForCloseButton);
         style.TabBarBorderSize              = metrics.tryGet!float("tab_bar_border_size",                         DEFAULT.TabBarBorderSize);
         style.TabBarOverlineSize            = metrics.tryGet!float("tab_bar_overline_size",                       DEFAULT.TabBarOverlineSize);
         style.TableAngledHeadersAngle       = metrics.tryGet!float("table_angled_headers_angle",                  DEFAULT.TableAngledHeadersAngle);
@@ -192,7 +191,8 @@ __gshared ImGuiStyle DEFAULT = ImGuiStyle(
     LogSliderDeadzone:              6.0f,
     TabRounding:                    6.0f,
     TabBorderSize:                  1.0f,
-    TabMinWidthForCloseButton:      -1.0f,
+    TabCloseButtonMinWidthSelected:      -1.0f,
+    TabCloseButtonMinWidthUnselected:      -1.0f,
     TabBarBorderSize:               1.0f,
     TabBarOverlineSize:             1.0f,
     TableAngledHeadersAngle:        35.0f * (PI / 180.0f),
@@ -217,66 +217,67 @@ __gshared ImGuiStyle DEFAULT = ImGuiStyle(
     HoverDelayNormal:               0.40f,
     HoverFlagsForTooltipMouse:      ImGuiHoveredFlags.Stationary | ImGuiHoveredFlags.DelayShort | ImGuiHoveredFlags.AllowWhenDisabled,        
     HoverFlagsForTooltipNav:        ImGuiHoveredFlags.NoSharedDelay | ImGuiHoveredFlags.DelayNormal | ImGuiHoveredFlags.AllowWhenDisabled,        
-    Colors: [
-        ImVec4(1.00f, 1.00f, 1.00f, 1.00f), // Text
-        ImVec4(0.50f, 0.50f, 0.50f, 1.00f), // TextDisabled
-        ImVec4(0.17f, 0.17f, 0.17f, 1.00f), // WindowBg
-        ImVec4(0.00f, 0.00f, 0.00f, 0.00f), // ChildBg
-        ImVec4(0.08f, 0.08f, 0.08f, 0.94f), // PopupBg
-        ImVec4(0.00f, 0.00f, 0.00f, 0.16f), // Border
-        ImVec4(0.00f, 0.00f, 0.00f, 0.16f), // BorderShadow
-        ImVec4(0.12f, 0.12f, 0.12f, 1.00f), // FrameBg
-        ImVec4(0.15f, 0.15f, 0.15f, 0.40f), // FrameBgHovered
-        ImVec4(0.22f, 0.22f, 0.22f, 0.67f), // FrameBgActive
-        ImVec4(0.04f, 0.04f, 0.04f, 1.00f), // TitleBg
-        ImVec4(0.00f, 0.00f, 0.00f, 1.00f), // TitleBgActive
-        ImVec4(0.00f, 0.00f, 0.00f, 0.51f), // TitleBgCollapsed
-        ImVec4(0.05f, 0.05f, 0.05f, 1.00f), // MenuBarBg
-        ImVec4(0.02f, 0.02f, 0.02f, 0.53f), // ScrollbarBg
-        ImVec4(0.31f, 0.31f, 0.31f, 1.00f), // ScrollbarGrab
-        ImVec4(0.41f, 0.41f, 0.41f, 1.00f), // ScrollbarGrabHovered
-        ImVec4(0.51f, 0.51f, 0.51f, 1.00f), // ScrollbarGrabActive
-        ImVec4(0.76f, 0.76f, 0.76f, 1.00f), // CheckMark
-        ImVec4(0.25f, 0.25f, 0.25f, 1.00f), // SliderGrab
-        ImVec4(0.60f, 0.60f, 0.60f, 1.00f), // SliderGrabActive
-        ImVec4(0.39f, 0.39f, 0.39f, 0.40f), // Button
-        ImVec4(0.44f, 0.44f, 0.44f, 1.00f), // ButtonHovered
-        ImVec4(0.50f, 0.50f, 0.50f, 1.00f), // ButtonActive
-        ImVec4(0.25f, 0.25f, 0.25f, 1.00f), // Header
-        ImVec4(0.28f, 0.28f, 0.28f, 0.80f), // HeaderHovered
-        ImVec4(0.44f, 0.44f, 0.44f, 1.00f), // HeaderActive
-        ImVec4(0.00f, 0.00f, 0.00f, 1.00f), // Separator
-        ImVec4(0.29f, 0.29f, 0.29f, 0.78f), // SeparatorHovered
-        ImVec4(0.47f, 0.47f, 0.47f, 1.00f), // SeparatorActive
-        ImVec4(0.35f, 0.35f, 0.35f, 0.00f), // ResizeGrip
-        ImVec4(0.40f, 0.40f, 0.40f, 0.00f), // ResizeGripHovered
-        ImVec4(0.55f, 0.55f, 0.56f, 0.00f), // ResizeGripActive
-        ImVec4(0.34f, 0.34f, 0.34f, 0.80f), // TabHovered
-        ImVec4(0.00f, 0.00f, 0.00f, 1.00f), // Tab
-        ImVec4(0.25f, 0.25f, 0.25f, 1.00f), // TabSelected
-        ImVec4(0.26f, 0.59f, 0.98f, 1.00f), // TabSelectedOverline
-        ImVec4(0.14f, 0.14f, 0.14f, 0.97f), // TabDimmed
-        ImVec4(0.17f, 0.17f, 0.17f, 1.00f), // TabDimmedSelected
-        ImVec4(0.50f, 0.50f, 0.50f, 0.00f), // TabDimmedSelectedOverline
-        ImVec4(0.62f, 0.68f, 0.75f, 0.70f), // DockingPreview
-        ImVec4(0.20f, 0.20f, 0.20f, 1.00f), // DockingEmptyBg
-        ImVec4(0.61f, 0.61f, 0.61f, 1.00f), // PlotLines
-        ImVec4(1.00f, 0.43f, 0.35f, 1.00f), // PlotLinesHovered
-        ImVec4(0.90f, 0.70f, 0.00f, 1.00f), // PlotHistogram
-        ImVec4(1.00f, 0.60f, 0.00f, 1.00f), // PlotHistogramHovered
-        ImVec4(0.19f, 0.19f, 0.20f, 1.00f), // TableHeaderBg
-        ImVec4(0.31f, 0.31f, 0.35f, 1.00f), // TableBorderStrong
-        ImVec4(0.23f, 0.23f, 0.25f, 1.00f), // TableBorderLight
-        ImVec4(0.310f, 0.310f, 0.310f, 0.267f), // TableRowBg
-        ImVec4(0.463f, 0.463f, 0.463f, 0.267f), // TableRowBgAlt
-        ImVec4(0.26f, 0.59f, 0.98f, 1.00f), // TextLink
-        ImVec4(0.26f, 0.59f, 0.98f, 0.35f), // TextSelectedBg
-        ImVec4(1.00f, 1.00f, 0.00f, 0.90f), // DragDropTarget
-        ImVec4(0.32f, 0.32f, 0.32f, 1.00f), // NavCursor
-        ImVec4(1.00f, 1.00f, 1.00f, 0.70f), // NavWindowingHighlight
-        ImVec4(0.80f, 0.80f, 0.80f, 0.20f), // NavWindowingDimBg
-        ImVec4(0.80f, 0.80f, 0.80f, 0.35f), // ModalWindowDimBg
-    ]
+    // Colors: [
+    //     ImVec4(1.00f, 1.00f, 1.00f, 1.00f), // Text
+    //     ImVec4(0.50f, 0.50f, 0.50f, 1.00f), // TextDisabled
+    //     ImVec4(0.17f, 0.17f, 0.17f, 1.00f), // WindowBg
+    //     ImVec4(0.00f, 0.00f, 0.00f, 0.00f), // ChildBg
+    //     ImVec4(0.08f, 0.08f, 0.08f, 0.94f), // PopupBg
+    //     ImVec4(0.00f, 0.00f, 0.00f, 0.16f), // Border
+    //     ImVec4(0.00f, 0.00f, 0.00f, 0.16f), // BorderShadow
+    //     ImVec4(0.12f, 0.12f, 0.12f, 1.00f), // FrameBg
+    //     ImVec4(0.15f, 0.15f, 0.15f, 0.40f), // FrameBgHovered
+    //     ImVec4(0.22f, 0.22f, 0.22f, 0.67f), // FrameBgActive
+    //     ImVec4(0.04f, 0.04f, 0.04f, 1.00f), // TitleBg
+    //     ImVec4(0.00f, 0.00f, 0.00f, 1.00f), // TitleBgActive
+    //     ImVec4(0.00f, 0.00f, 0.00f, 0.51f), // TitleBgCollapsed
+    //     ImVec4(0.05f, 0.05f, 0.05f, 1.00f), // MenuBarBg
+    //     ImVec4(0.02f, 0.02f, 0.02f, 0.53f), // ScrollbarBg
+    //     ImVec4(0.31f, 0.31f, 0.31f, 1.00f), // ScrollbarGrab
+    //     ImVec4(0.41f, 0.41f, 0.41f, 1.00f), // ScrollbarGrabHovered
+    //     ImVec4(0.51f, 0.51f, 0.51f, 1.00f), // ScrollbarGrabActive
+    //     ImVec4(0.76f, 0.76f, 0.76f, 1.00f), // CheckMark
+    //     ImVec4(0.25f, 0.25f, 0.25f, 1.00f), // SliderGrab
+    //     ImVec4(0.60f, 0.60f, 0.60f, 1.00f), // SliderGrabActive
+    //     ImVec4(0.39f, 0.39f, 0.39f, 0.40f), // Button
+    //     ImVec4(0.44f, 0.44f, 0.44f, 1.00f), // ButtonHovered
+    //     ImVec4(0.50f, 0.50f, 0.50f, 1.00f), // ButtonActive
+    //     ImVec4(0.25f, 0.25f, 0.25f, 1.00f), // Header
+    //     ImVec4(0.28f, 0.28f, 0.28f, 0.80f), // HeaderHovered
+    //     ImVec4(0.44f, 0.44f, 0.44f, 1.00f), // HeaderActive
+    //     ImVec4(0.00f, 0.00f, 0.00f, 1.00f), // Separator
+    //     ImVec4(0.29f, 0.29f, 0.29f, 0.78f), // SeparatorHovered
+    //     ImVec4(0.47f, 0.47f, 0.47f, 1.00f), // SeparatorActive
+    //     ImVec4(0.35f, 0.35f, 0.35f, 0.00f), // ResizeGrip
+    //     ImVec4(0.40f, 0.40f, 0.40f, 0.00f), // ResizeGripHovered
+    //     ImVec4(0.55f, 0.55f, 0.56f, 0.00f), // ResizeGripActive
+    //     ImVec4(0.34f, 0.34f, 0.34f, 0.80f), // TabHovered
+    //     ImVec4(0.00f, 0.00f, 0.00f, 1.00f), // Tab
+    //     ImVec4(0.25f, 0.25f, 0.25f, 1.00f), // TabSelected
+    //     ImVec4(0.26f, 0.59f, 0.98f, 1.00f), // TabSelectedOverline
+    //     ImVec4(0.14f, 0.14f, 0.14f, 0.97f), // TabDimmed
+    //     ImVec4(0.17f, 0.17f, 0.17f, 1.00f), // TabDimmedSelected
+    //     ImVec4(0.50f, 0.50f, 0.50f, 0.00f), // TabDimmedSelectedOverline
+    //     ImVec4(0.62f, 0.68f, 0.75f, 0.70f), // DockingPreview
+    //     ImVec4(0.20f, 0.20f, 0.20f, 1.00f), // DockingEmptyBg
+    //     ImVec4(0.61f, 0.61f, 0.61f, 1.00f), // PlotLines
+    //     ImVec4(1.00f, 0.43f, 0.35f, 1.00f), // PlotLinesHovered
+    //     ImVec4(0.90f, 0.70f, 0.00f, 1.00f), // PlotHistogram
+    //     ImVec4(1.00f, 0.60f, 0.00f, 1.00f), // PlotHistogramHovered
+    //     ImVec4(0.19f, 0.19f, 0.20f, 1.00f), // TableHeaderBg
+    //     ImVec4(0.31f, 0.31f, 0.35f, 1.00f), // TableBorderStrong
+    //     ImVec4(0.23f, 0.23f, 0.25f, 1.00f), // TableBorderLight
+    //     ImVec4(0.310f, 0.310f, 0.310f, 0.267f), // TableRowBg
+    //     ImVec4(0.463f, 0.463f, 0.463f, 0.267f), // TableRowBgAlt
+    //     ImVec4(0.26f, 0.59f, 0.98f, 1.00f), // TextLink
+    //     ImVec4(0.26f, 0.59f, 0.98f, 0.35f), // TextSelectedBg
+    //     ImVec4(0, 0, 0, 1),                 // TreeLines
+    //     ImVec4(1.00f, 1.00f, 0.00f, 0.90f), // DragDropTarget
+    //     ImVec4(0.32f, 0.32f, 0.32f, 1.00f), // NavCursor
+    //     ImVec4(1.00f, 1.00f, 1.00f, 0.70f), // NavWindowingHighlight
+    //     ImVec4(0.80f, 0.80f, 0.80f, 0.20f), // NavWindowingDimBg
+    //     ImVec4(0.80f, 0.80f, 0.80f, 0.35f), // ModalWindowDimBg
+    // ]
 );
 
 /**

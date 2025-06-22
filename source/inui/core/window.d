@@ -7,6 +7,7 @@
     Authors: Luna Nielsen
 */
 module inui.core.window;
+import inui.core.render;
 import inui.widgets;
 import inmath;
 import nulib;
@@ -94,36 +95,6 @@ private:
         } else static if (is(T == U*, U)) {
             return cast(T)SDL_GetPointerProperty(propId, zkey.ptr, cast(void*)defaultValue);
         } else static assert(0, T.stringof~" is not supported.");
-    }
-
-    SDL_GLContext tryCreateContextVersion(int major, int minor) {
-        SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_CONTEXT_PROFILE_MASK, SDL_GLProfile.SDL_GL_CONTEXT_PROFILE_CORE);
-        SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_CONTEXT_MAJOR_VERSION, major);
-        SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_CONTEXT_MINOR_VERSION, minor);
-        return SDL_GL_CreateContext(handle);
-    }
-
-    // Helper that sets up and creates a GL context.
-    SDL_GLContext createGLContext() {
-        import bindbc.opengl : openGLContextVersion, isOpenGLLoaded, GLSupport, loadOpenGL;
-        
-        SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_DOUBLEBUFFER, 1);
-        SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_DEPTH_SIZE, 24);
-        SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_STENCIL_SIZE, 8);
-        SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_RED_SIZE, 8);
-        SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_GREEN_SIZE, 8);
-        SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_BLUE_SIZE, 8);
-        SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_ALPHA_SIZE, 8);
-        if (auto handle = this.tryCreateContextVersion(3, 2)) {
-            if (openGLContextVersion <= GLSupport.gl32)
-                loadOpenGL();
-            return handle;
-        } else if (auto handle = this.tryCreateContextVersion(3, 1)) {
-            if (openGLContextVersion <= GLSupport.gl31)
-                loadOpenGL();
-            return handle;
-        }
-        return SDL_GLContext.init;
     }
 
     // Helper that runs OS init hooks.
@@ -381,7 +352,7 @@ public:
     this(SDL_Window* handle) {
         assert(handle, "Failed creating NativeWindow handle");
         this.handle = handle;
-        this.glctx = GLContext.fromWindow(this);
+        this.glctx = nogc_new!GLContext(this);
         this.runOsInitHooks();
     }
 
@@ -593,117 +564,6 @@ public:
             size.x, size.y,
             cast(SDL_WindowFlags)(SDL_WindowFlags.SDL_WINDOW_POPUP_MENU | BASE_FLAGS | flags)
         ));
-    }
-}
-
-/**
-    An OpenGL Context
-*/
-final
-class GLContext : NuObject {
-private:
-@nogc:
-    __gshared weak_vector!GLContext __glContexts;
-
-    // Thread-Local
-    static GLContext __currentGLCtx;
-
-    NativeWindow window;
-    SDL_GLContext ctx;
-
-public:
-
-    /**
-        Whether this context is the current context.
-    */
-    @property bool isCurrent() { return __currentGLCtx is this; }
-
-    /**
-        Whether Vertical Sync is enabled.
-    */
-    @property bool vsync() {
-        this.makeCurrent();
-        int swapInterval;
-        return SDL_GL_GetSwapInterval(&swapInterval) && swapInterval != 0;
-    }
-    @property void vsync(bool value) {
-        this.makeCurrent();
-        if (value && !SDL_GL_SetSwapInterval(-1)) {
-            cast(void)SDL_GL_SetSwapInterval(1);
-            return;
-        }
-        cast(void)SDL_GL_SetSwapInterval(0);
-    }
-
-    /**
-        Destructor
-    */
-    ~this() {
-        __glContexts.remove(this);
-        SDL_GL_DestroyContext(ctx);
-    }
-
-    /**
-        Constructor
-    */
-    this(NativeWindow window, SDL_GLContext ctx) {
-        this.window = window;
-        this.ctx = ctx;
-        __glContexts ~= this;
-    }
-
-    /**
-        Gets a GL context from its window
-    */
-    static
-    GLContext fromWindow(NativeWindow window) {
-        if (!window)
-            return null;
-            
-        foreach(ref GLContext ctx; __glContexts) {
-            if (ctx.window is window)
-                return ctx;
-        }
-
-        // If that NativeWindow has a GL context, but isn't in our list,
-        // add it.
-        if (SDL_GetWindowFlags(window.handle) & SDL_WindowFlags.SDL_WINDOW_OPENGL) {
-            return nogc_new!GLContext(window, window.createGLContext());
-        }
-        return null;
-    }
-
-    /**
-        Gets whether the given extension is supported.
-
-        Params:
-            extension = The OpenGL extension to query.
-        
-        Returns:
-            $(D true) if this context supports the requested extension.
-            $(D false) otherwise.
-    */
-    bool extensionSupported(string extension) {
-        if (!isCurrent)
-            this.makeCurrent();
-        
-        nstring tmp = extension;
-        return SDL_GL_ExtensionSupported(tmp.ptr);
-    }
-
-    /**
-        Makes the context current.
-        
-        Returns:
-            $(D true) if the operation succeeded,
-            $(D false) otherwise.
-    */
-    bool makeCurrent() {
-        if (__currentGLCtx !is this) {
-            __currentGLCtx = this;
-            return SDL_GL_MakeCurrent(window.handle, ctx);
-        }
-        return true;
     }
 }
 

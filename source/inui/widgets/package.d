@@ -9,3 +9,4 @@
 module inui.widgets;
 
 public import inui.widgets.widget;
+public import inui.widgets.imgui;
