@@ -164,9 +164,11 @@ public:
     /**
         Adds a widget to the container.
     */
-    void add(Widget widget) {
+    auto add(Widget widget) {
         if (findWidget(widget) == -1)
             this.children_ ~= widget;
+        
+        return this;
     }
     
     /**
@@ -186,4 +188,11 @@ public:
     this(string name, bool randomize = true) {
         super(name, randomize);
     }
+}
+
+/**
+    Adds a widget to the given container.
+*/
+T addWidget(T)(T to, Widget widget) if (is(T : Container)) {
+    return cast(T)to.add(widget);
 }

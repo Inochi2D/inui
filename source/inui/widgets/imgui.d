@@ -9,17 +9,30 @@
 module inui.widgets.imgui;
 import inui.widgets.widget;
 import inui.window;
+import i2d.imgui;
 
 /**
-    An imgui workspace
+    A workspace, contains a main docking node that windows can
+    dock into.
 */
 class ImWorkspace : Container {
-private:
-    Window window;
+protected:
+
+    /**
+        Called once a frame to update the widget.
+    */
+    override
+    void onUpdate(float delta) {
+        igDockSpaceOverViewport(0, null, ImGuiDockNodeFlags.PassthruCentralNode);
+        super.onUpdate(delta);
+    }
 
 public:
-    this(Window window) {
-        this.window = window;
+
+    /**
+        Constructor
+    */
+    this() {
         super("Workspace", false);
     }
 }

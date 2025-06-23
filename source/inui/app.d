@@ -236,19 +236,25 @@ public:
         Runs the application.
     */
     int run(Window window, string[] args) {
-        this.startArgs = args.length > 1 ? args[1..$] : null;
-        this.exec = args.length > 0 ? args[0] : null;
+        try {
+            this.startArgs = args.length > 1 ? args[1..$] : null;
+            this.exec = args.length > 0 ? args[0] : null;
 
-        if (window) {
-            this.mainWindow_ = window;
-            this.mainWindow_.show();
-            
-            int ret = this.startEventLoop();
-            return ret;
+            if (window) {
+                this.mainWindow_ = window;
+                this.mainWindow_.show();
+                
+                int ret = this.startEventLoop();
+                return ret;
+            }
+
+            this.handlers.length = 0;
+            return 0;
+        } catch(Exception ex) {
+            import inui.core.msgbox : MessageBox, MessageType;
+            MessageBox.show(MessageType.error, "Uncaught Exception", ex.msg);
+            return -1;
         }
-
-        this.handlers.length = 0;
-        return 0;
     }
 
     /**

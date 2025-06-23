@@ -54,7 +54,7 @@ public:
     /**
         The root level widget of the window.
     */
-    ImWorkspace workspace;
+    Widget widget;
 
     /**
         All currently active windows.
@@ -219,7 +219,6 @@ public:
     this(string title, int width, int height, ulong flags = 0) {
         this.backing = nogc_new!NativeWindow(title, vec2i(width, height), flags);
         this.context = new IGContext(backing);
-        this.workspace = new ImWorkspace(this);
         __active_windows ~= this;
         SDL_SetEventFilter(&__Inui_Window_EventFilter, cast(void*)this);
     }
@@ -248,7 +247,7 @@ public:
         context.makeCurrent();
 
         context.beginFrame(backing, deltaTime);
-            workspace.update(deltaTime);
+            widget.update(deltaTime);
         context.endFrame(backing);
         this.swap();
     }
