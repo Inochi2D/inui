@@ -216,6 +216,10 @@ public:
         Starts rendering a new frame in the window.
     */
     void update(float deltaTime) {
+        vec2i sz = backing.ptSize;
+        if (sz.x == 0 || sz.y == 0)
+            return;
+        
         context.makeCurrent();
 
         context.beginFrame(backing, deltaTime);
