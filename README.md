@@ -10,14 +10,14 @@ to break from time to time for the time being.
 ## Dependencies
 
 InUI depends on a few libraries to function correctly, the libraries are as follows:  
-| Dependency     | Notes                              | Platform |
-| :------------- | :--------------------------------- | :------: |
-| `SDL 3.2.0+`   | Provided automatically on Windows. |   All    |
-| `fontconfig`   |                                    |   🐧    |
-| `DirectWrite`  |                                    |   🪟    |
-| `CoreText`     |                                    |   🍎    |
-| `CMake`        | Required to compile imgui.         |   All    |
-| `C++ compiler` | Required to compile imgui.         |   All    |
-| `glibc`        |                                    |   🐧    |
-| `MSVC 2022+`   |                                    |   🪟    |
-| `D 2.111`      |                                    |   All    |
+| Dependency     | Notes                                                      | Platform |
+| :------------- | :--------------------------------------------------------- | :------: |
+| `SDL 3.2.0+`   | Provided automatically on Windows.                         |   All    |
+| `fontconfig`   | Used to list system fonts.                                 |   🐧    |
+| `DirectWrite`  | Used to list system fonts.                                 |   🪟    |
+| `CoreText`     | Used to list system fonts.                                 |   🍎    |
+| `CMake`        | Required to compile imgui.                                 |   All    |
+| `C++ compiler` | Required to compile imgui.                                 |   All    |
+| `glibc`        | Only tested w/ glibc, ymmv with other C runtimes on Linux. |   🐧    |
+| `MSVC 2022+`   |                                                            |   🪟    |
+| `D 2.111`      |                                                            |   All    |
