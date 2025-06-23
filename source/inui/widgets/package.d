@@ -1,64 +1,12 @@
-/*
-    Copyright © 2022, Inochi2D Project
+/**
+    Widgets
+
+    Copyright © 2020-2023, Inochi2D Project
     Distributed under the 2-Clause BSD License, see LICENSE file.
     
     Authors: Luna Nielsen
 */
 module inui.widgets;
-import inmath;
-import bindbc.imgui;
 
-public import inui.widgets.dummy;
-public import inui.widgets.image;
-public import inui.widgets.input;
-public import inui.widgets.menu;
-public import inui.widgets.label;
-public import inui.widgets.dialog;
-public import inui.widgets.progress;
-public import inui.widgets.popup;
-
-void uiImPush(int id) {
-    igPushID(id);
-}
-
-void uiImPush(string id) {
-    igPushID(id.ptr, id.ptr+id.length);
-}
-
-void uiImPush(T)(T* id) {
-    igPushID(id);
-}
-
-void uiImPop() {
-    igPopID();
-}
-
-void uiImIndent(float indentW = 0f) {
-    igIndent(indentW);
-}
-
-void uiImUnindent() {
-    igUnindent();
-}
-
-void uiImSeperator() {
-    igPushStyleColor(ImGuiCol.Separator, igGetStyle().Colors[ImGuiCol.TextDisabled]);
-        igSeparator();
-    igPopStyleColor();
-}
-
-void uiImNewLine() {
-    igNewLine();
-}
-
-bool uiImHeader(const(char)* label, bool defaultOpen=false) {
-    return igCollapsingHeader(label, defaultOpen ? ImGuiTreeNodeFlags.DefaultOpen : ImGuiTreeNodeFlags.None);
-}
-
-bool uiImBeginChild(string id, vec2 size = vec2(0), bool border=false) {
-    return igBeginChild(igGetID(id.ptr, id.ptr+id.length), ImVec2(size.x, size.y), border);
-}
-
-void uiImEndChild() {
-    igEndChild();
-}
+public import inui.widgets.widget;
+public import inui.widgets.imgui;

@@ -1,17 +1,15 @@
-.dub
+# Output Artifacts
+out/
+
+# Dub Junk
+.dub/
+dub.selections.json
+__dummy_docs/
 docs.json
 __dummy.html
-docs/
-/inui
-inui.so
-inui.dylib
-inui.dll
-inui.a
-inui.lib
-inui-test-*
-*.exe
-*.o
-*.obj
-*.lst
-out/
-dub.selections.json
+
+# VSCode Junk
+.vscode/
+
+# Testing
+test/
