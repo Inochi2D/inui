@@ -134,11 +134,7 @@ private:
     void delegate(ref SDL_Event ev)[] handlers;
 
     int startEventLoop() {
-        long currTime = 0;
         while(mainWindow_ && !mainWindow_.isCloseRequested) {
-            long prevTime = currTime;
-            currTime = SDL_GetTicks();
-            float deltaTime = abs(cast(float)(currTime-prevTime)*0.001f);
 
             SDL_PumpEvents();
             SDL_Event ev;
@@ -170,12 +166,8 @@ private:
                 }
             }
 
-            // Skip rendering zero or negative delta
-            if (deltaTime <= 0)
-                continue;
-
             foreach(Window window; Window.windows) {
-                window.update(deltaTime);
+                window.update();
             }
         }
         return 0;

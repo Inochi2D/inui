@@ -14,9 +14,11 @@ import inui.widgets;
 import inmath;
 import numem;
 import sdl;
+import sdl.timer;
 
 // Re-exported symbols
 public import inui.core.window : SystemTheme, SystemVibrancy;
+import inui.app;
 
 /**
     A window
@@ -25,6 +27,9 @@ class Window {
 private:
     NativeWindow backing;
     IGContext context;
+    long prevTime_;
+    long currTime_;
+    float deltaTime_;
 
     __gshared Window[] __active_windows;
     ptrdiff_t getIndex() {
@@ -33,6 +38,15 @@ private:
                 return i;
         }
         return -1;
+    }
+
+    /**
+        Forces the app to update timing information.
+    */
+    void updateTiming() {
+        prevTime_ = currTime_;
+        currTime_ = SDL_GetTicks();
+        deltaTime_ = abs(cast(float)(currTime_-prevTime_)*0.001f);
     }
 
 public:
@@ -168,6 +182,11 @@ public:
     @property SystemTheme systemTheme() { return NativeWindow.systemTheme; }
 
     /**
+        The time between this and the last frame.
+    */
+    @property float deltaTime() { return deltaTime_; }
+
+    /**
         Gets a NativeWindow from its ID.
     */
     static
@@ -215,7 +234,13 @@ public:
     /**
         Starts rendering a new frame in the window.
     */
-    void update(float deltaTime) {
+    void update() {
+        this.updateTiming();
+
+        // Skip rendering zero or negative delta
+        if (deltaTime_ <= 0)
+            return;
+
         vec2i sz = backing.ptSize;
         if (sz.x == 0 || sz.y == 0)
             return;
@@ -331,7 +356,7 @@ bool __Inui_Window_EventFilter(void* userdata, SDL_Event* event) @nogc nothrow {
         if (event.window.windowID == (cast(Window)userdata).backingWindow.id) {
             switch(event.type) {
                 case SDL_EventType.SDL_EVENT_WINDOW_EXPOSED:
-                    (cast(Window)userdata).update(0.016f);
+                    (cast(Window)userdata).update();
                     break;
                 
                 default:
