@@ -331,11 +331,7 @@ bool __Inui_Window_EventFilter(void* userdata, SDL_Event* event) @nogc nothrow {
         if (event.window.windowID == (cast(Window)userdata).backingWindow.id) {
             switch(event.type) {
                 case SDL_EventType.SDL_EVENT_WINDOW_EXPOSED:
-                    (cast(Window)userdata).update(0.0016f);
-                    break;
-                    
-                case SDL_EventType.SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
-                    (cast(Window)userdata).processEvent(event);
+                    (cast(Window)userdata).update(0.016f);
                     break;
                 
                 default:

@@ -668,6 +668,29 @@ public:
         // Load config
         this.window = window;
         this.create();
+        this.rescale();
+    }
+
+    /**
+        Re-scales the window and context.
+    */
+    void rescale() {       
+        ImGuiStyle* style = igGetStyle();
+        float scale = window.scale;
+        float relScale = scale / lastScale;
+        if (relScale == 1)
+            return;
+
+        // Rescale windows and fonts.
+        igScaleWindowsInViewport(cast(ImGuiViewportP*)igGetMainViewport(), relScale);
+        style.FontScaleDpi = scale;
+        window.ptSize = vec2i(
+            cast(int)(lastSize.x * relScale), 
+            cast(int)(lastSize.y * relScale)
+        );
+
+        this.lastScale = scale;
+        this.lastSize = window.ptSize;
     }
 
     /**
@@ -675,26 +698,11 @@ public:
     */
     bool processEvent(const(SDL_Event)* event) {
         switch (event.type) {
-            case SDL_EventType.SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
+            case SDL_EventType.SDL_EVENT_WINDOW_DISPLAY_CHANGED:
                 if (event.window.windowID != window.id)
                     return false;
                 
-                ImGuiStyle* style = igGetStyle();
-                float scale = window.scale;
-                float relScale = scale / lastScale;
-                if (relScale == 1)
-                    return false;
-
-                // Rescale windows and fonts.
-                igScaleWindowsInViewport(cast(ImGuiViewportP*)igGetMainViewport(), relScale);
-                style.FontScaleDpi = scale;
-                window.ptSize = vec2i(
-                    cast(int)(lastSize.x * relScale), 
-                    cast(int)(lastSize.y * relScale)
-                );
-
-                this.lastScale = scale;
-                this.lastSize = window.ptSize;
+                this.rescale();
                 return true;
             
             case SDL_EventType.SDL_EVENT_WINDOW_RESIZED:
