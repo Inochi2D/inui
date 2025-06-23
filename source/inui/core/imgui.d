@@ -13,6 +13,7 @@ import inui.font;
 import inui.image;
 import bindbc.opengl;
 import i2d.imgui;
+import nulib.math : isFinite;
 import inmath;
 import numem;
 import nulib;
@@ -446,7 +447,7 @@ private:
         };
         sharedFontLoader.FontSrcContainsGlyph = (ImFontAtlas* atlas, ImFontConfig* src, ImWchar code) {
             HaFont font = (cast(HaFile)src.FontLoaderData).fonts[src.FontNo];
-            return font.charMap.hasCodepoint(code);
+            return font.charMap.getGlyphIndex(code) != GLYPH_MISSING;
         };
         sharedFontLoader.FontBakedInit = (ImFontAtlas* atlas, ImFontConfig* src, ImFontBaked* baked, void* lddata) {
             float size = baked.Size;
@@ -488,27 +489,27 @@ private:
             // Copy bitmap data.
             HaBitmap bitmap = glyph.rasterize();
             bitmap.crop(1, 1, bitmap.width-1, bitmap.height-1);
-            int w = cast(int)bitmap.width;
-            int h = cast(int)bitmap.height;
-            if (w == 0 || h == 0) {
+            if (bitmap.width == 0 || bitmap.height == 0) {
                 bitmap.free();
                 return false;
             }
 
-            atlas.Builder.TempBuffer.resize(w*h);
-            atlas.Builder.TempBuffer.Data[0..atlas.Builder.TempBuffer.Size] = cast(char[])bitmap.data[0..$];
-            bitmap.free();
-
             // Pack glyph.
-            ImFontAtlasRectId packId = igImFontAtlasPackAddRect(atlas, w, h);
+            ImFontAtlasRectId packId = igImFontAtlasPackAddRect(atlas, bitmap.width, bitmap.height);
             if (packId == -1)
                 return false;
             
             ImTextureRect* packRect = igImFontAtlasPackGetRect(atlas, packId);
 
-            float baselineY = baked.Size - glyph.metrics.bounds.yMin;
-            float baselineX = glyph.metrics.bounds.xMin;
-
+            float w = cast(float)bitmap.width;
+            float h = cast(float)bitmap.height;
+            float baselineY = (baked.Size - glyph.metrics.bounds.yMin)-1.0;
+            float baselineX = (glyph.metrics.bounds.xMin)-1.0;
+            if (src.PixelSnapH)
+                baselineX = floor(baselineX);
+            if (src.PixelSnapV)
+                baselineY = floor(baselineY);
+            
             // Generate and add glyph.
             dst.X0 = baselineX;
             dst.Y0 = baselineY - h;
@@ -523,102 +524,14 @@ private:
                 src,
                 dst,
                 packRect,
-                atlas.Builder.TempBuffer.Data,
+                cast(char*)bitmap.data.ptr,
                 ImTextureFormat.Alpha8,
                 bitmap.width
             );
+            bitmap.free();
             return true;
         };
         io.Fonts.FontLoader = &sharedFontLoader;
-
-        // Single-font loader.
-        singleFontLoader.Name = "Hairetsu (Single)";
-        singleFontLoader.FontBakedSrcLoaderDataSize = HaFace.sizeof;
-        singleFontLoader.FontSrcContainsGlyph = (ImFontAtlas* atlas, ImFontConfig* src, ImWchar code) {
-            HaFont font = *cast(HaFont*)src.FontData;
-            return font.charMap.hasCodepoint(code);
-        };
-        singleFontLoader.FontBakedInit = (ImFontAtlas* atlas, ImFontConfig* src, ImFontBaked* baked, void* lddata) {
-            float size = baked.Size;
-            HaFont font = *cast(HaFont*)src.FontData;
-            HaFace face = font.createFace();
-            *(cast(HaFace*)lddata) = face;
-
-            // Set name.
-            size_t nameSize = min(font.name.length, ImFontConfig.Name.length);
-            src.Name[0..$] = '\0';
-            src.Name[0..nameSize] = font.name[0..nameSize];
-
-            face.pt = size;
-            if (!src.MergeMode) {
-                HaMetrics fmetrics = face.faceMetrics;
-                baked.Ascent = ceil(fmetrics.ascender.x);
-                baked.Descent = ceil(fmetrics.descender.x);
-            }
-            return true;
-        };
-        singleFontLoader.FontBakedLoadGlyph = (ImFontAtlas* atlas, ImFontConfig* src, ImFontBaked* baked, void* lddata, ImWchar code, ImFontGlyph* dst) {    
-            HaFont font = *cast(HaFont*)src.FontData;
-            uint glyphId = font.charMap.getGlyphIndex(code);
-            if (glyphId == GLYPH_MISSING)
-                return false;
-            
-            HaFace face = *cast(HaFace*)lddata;
-            HaGlyph glyph = face.getGlyph(glyphId, HaGlyphType.outline);
-            
-            // Basic data.
-            dst.Codepoint = code;
-            dst.AdvanceX = glyph.metrics.advance.x;
-            if (!glyph.hasData)
-                return true;
-
-            // Copy bitmap data.
-            HaBitmap bitmap = glyph.rasterize();
-            bitmap.crop(1, 1, bitmap.width-1, bitmap.height-1);
-            int w = cast(int)bitmap.width;
-            int h = cast(int)bitmap.height;
-            if (w == 0 || h == 0) {
-                bitmap.free();
-                return false;
-            }
-
-            atlas.Builder.TempBuffer.resize(w*h);
-            atlas.Builder.TempBuffer.Data[0..atlas.Builder.TempBuffer.Size] = cast(char[])bitmap.data[0..$];
-            bitmap.free();
-
-            // Pack glyph.
-            ImFontAtlasRectId packId = igImFontAtlasPackAddRect(atlas, w, h);
-            if (packId == -1)
-                return false;
-            
-            ImTextureRect* packRect = igImFontAtlasPackGetRect(atlas, packId);
-            float baselineY = baked.Size - glyph.metrics.bounds.yMin;
-            float baselineX = glyph.metrics.bounds.xMin;
-
-            // Generate and add glyph.
-            dst.X0 = baselineX;
-            dst.Y0 = baselineY - h;
-            dst.X1 = baselineX + w;
-            dst.Y1 = baselineY;
-            dst.Visible = true;
-            dst.Colored = false;
-            dst.PackId = packId;
-            igImFontAtlasBakedSetFontGlyphBitmap(
-                atlas,
-                baked,
-                src,
-                dst,
-                packRect,
-                atlas.Builder.TempBuffer.Data,
-                ImTextureFormat.Alpha8,
-                bitmap.width
-            );
-            return true;
-        };
-        singleFontLoader.FontBakedDestroy = (ImFontAtlas* atlas, ImFontConfig* src, ImFontBaked* baked, void* lddata) {
-            *(cast(HaFace*)lddata) = (*cast(HaFace*)lddata).released();
-            *(cast(HaFont*)src.FontData) = (*cast(HaFont*)src.FontData).released();
-        };
     }
 
     //
@@ -855,22 +768,8 @@ public:
     /**
         Adds a font file to the context.
     */
-    void addFontFile(HaFile file) {
-        import nulib.math : min;
+    void addFont(HaFile file) {
 
-        foreach(ref HaFont subfont; file.fonts) {
-            ImFontConfig src;
-            src.RasterizerDensity = 1.0;
-            src.FontLoader = &singleFontLoader;
-            src.OversampleH = 1;
-            src.OversampleV = 1;
-            src.SizePixels = 14;
-            src.FontDataOwnedByAtlas = false;
-            src.FontDataSize = HaFont.sizeof;
-            src.FontData = nu_malloc(src.FontDataSize);
-            (cast(HaFont*)src.FontData)[0] = subfont;
-            ImFontAtlas_AddFont(io.Fonts, &src);
-        }
     }
 }
 
