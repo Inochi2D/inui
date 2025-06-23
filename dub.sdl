@@ -10,7 +10,7 @@ workingDirectory "out/"
 
 dependency "hairetsu" version="~i2d08"
 dependency "sdl-d" version="3.2.0-rc2"
-dependency "i2d-imgui" path="../i2d-imgui"
+dependency "i2d-imgui" version="1.92.0-wip"
 dependency "i2d-opengl" version="1.0.0"
 dependency "i18n-d" version="~>1.0.2"
 dependency "inmath" version="~>1.3.0"
