@@ -16,6 +16,7 @@ import sdl.timer;
 
 public import nulib.string;
 import nulib.math : abs;
+import inui.core.fonts;
 import inui.core.settings;
 import inui.core.window;
 import inui.core.imgui;
@@ -129,6 +130,7 @@ private:
     //
     //          APP STATE
     //
+    GlyphManager glyphManager_;
     Window mainWindow_;
     Menu mainMenu_;
     void delegate(ref SDL_Event ev)[] handlers;
@@ -198,6 +200,11 @@ public:
     @property string[] args() { return startArgs; }
 
     /**
+        The app's global glyph manager.
+    */
+    @property GlyphManager glyphManager() { return glyphManager_; }
+
+    /**
         The app's settings.
     */
     @property AppSettings settings() { return settings_; }
@@ -241,6 +248,7 @@ public:
             this.exec = args.length > 0 ? args[0] : null;
 
             if (window) {
+                this.glyphManager_ = new GlyphManager();
                 this.mainWindow_ = window;
                 this.mainWindow_.show();
                 
