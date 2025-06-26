@@ -249,6 +249,7 @@ public:
 
             if (window) {
                 this.glyphManager_ = new GlyphManager();
+                this.glyphManager_.set(this.glyphManager_.sources[0]);
                 this.mainWindow_ = window;
                 this.mainWindow_.show();
                 

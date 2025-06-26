@@ -426,24 +426,6 @@ private:
             atlas.FontLoaderName = "Hairetsu";
             return true;
         };
-        sharedFontLoader.FontSrcInit = (ImFontAtlas* atlas, ImFontConfig* src) {
-            if (src.FontData) {
-                
-                auto gsrc = new UIFont(cast(ubyte[])src.FontData[0..src.FontDataSize]);
-                printf("Added %s...\n", gsrc.name.ptr);
-
-                IGContext.glyphManager.add(gsrc);
-                IGContext.glyphManager.activate(gsrc);
-                src.FontLoaderData = cast(void*)gsrc;
-                return true;
-            }
-            return false;
-        };
-        sharedFontLoader.FontSrcDestroy = (ImFontAtlas* atlas, ImFontConfig* src) {
-            if (src.FontLoaderData) {
-                IGContext.glyphManager.deactivate((cast(GlyphSource)src.FontLoaderData));
-            }
-        };
         sharedFontLoader.FontSrcContainsGlyph = (ImFontAtlas* atlas, ImFontConfig* src, ImWchar code) {
             return IGContext.glyphManager.hasCodepoint(code);
         };
@@ -452,12 +434,20 @@ private:
             return true;
         };
         sharedFontLoader.FontBakedLoadGlyph = (ImFontAtlas* atlas, ImFontConfig* src, ImFontBaked* baked, void* lddata, ImWchar code, ImFontGlyph* dst) {
-            if (!IGContext.glyphManager.hasCodepoint(code))
+            GlyphSource gsrc = IGContext.glyphManager.getGlyphSourceFor(code);
+            if (!gsrc)
                 return false;
 
-            Metrics metrics = IGContext.glyphManager.getMetricsFor(code);
-            Bitmap bitmap = IGContext.glyphManager.rasterize(code);
-            SourceMetrics smetrics = IGContext.glyphManager.getSourceMetricsFor(code);
+            if (auto msrc = IGContext.glyphManager.mainSource) {
+                size_t lowestLength = min(src.Name.length, msrc.name.length);
+                src.Name[0..$] = '\0';
+                src.Name[0..lowestLength] = msrc.name[0..lowestLength];
+            }
+
+            uint glyphIdx = gsrc.getGlyphIndex(code);
+            Bitmap bitmap = gsrc.rasterize(glyphIdx);
+            SourceMetrics smetrics = gsrc.metrics;
+            Metrics metrics = gsrc.getMetricsFor(glyphIdx);
             if (!src.MergeMode) {
                 baked.Ascent = ceil(smetrics.ascender.x);
                 baked.Descent = ceil(smetrics.descender.x);
@@ -482,21 +472,16 @@ private:
                 return false;
             
             ImTextureRect* packRect = igImFontAtlasPackGetRect(atlas, packId);
-
-            float w = cast(float)bitmap.width;
-            float h = cast(float)bitmap.height;
-            float baselineY = (baked.Size - metrics.bounds.yMin)-1.0;
-            float baselineX = (metrics.bounds.xMin)-1.0;
-            if (src.PixelSnapH)
-                baselineX = floor(baselineX);
-            if (src.PixelSnapV)
-                baselineY = floor(baselineY);
+            rect renderRect = gsrc.getRenderRectFor(
+                glyphIdx, 
+                baked.Size
+            );
             
             // Generate and add glyph.
-            dst.X0 = baselineX;
-            dst.Y0 = baselineY - h;
-            dst.X1 = baselineX + w;
-            dst.Y1 = baselineY;
+            dst.X0 = renderRect.left;
+            dst.Y0 = renderRect.top;
+            dst.X1 = renderRect.right;
+            dst.Y1 = renderRect.bottom;
             dst.Visible = true;
             dst.Colored = false;
             dst.PackId = packId;
@@ -515,6 +500,7 @@ private:
         };
 
         io.Fonts.FontLoader = &sharedFontLoader;
+        igGetStyle().FontSizeBase = 14;
     }
 
     static @property GlyphManager glyphManager() {

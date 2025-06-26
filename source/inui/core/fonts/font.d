@@ -47,8 +47,8 @@ public:
     /**
         Current size of the glyph source in
     */
-    override @property float size() => face.pt;
-    override @property void size(float value) { face.pt = value; }
+    override @property float size() => face.px;
+    override @property void size(float value) { face.px = value; }
 
     /**
         Synthetic thickness to apply.
@@ -77,8 +77,9 @@ public:
         Creates a fontlist from the system fonts.
     */
     static UIFont[] createFontList() {
+        import std.uni : toLower;
+        import std.stdio : writeln;
         UIFont[] result;
-
         auto fontlist = ha.FontCollection.createFromSystem();
         foreach(ha.FontFamily family; fontlist.families) {
             foreach(ha.FontFaceInfo info; family.faces) {
@@ -86,6 +87,10 @@ public:
                     continue;
                 
                 if (info.variable)
+                    continue;
+
+                string ext = info.path[$-4..$-1].toLower();
+                if (ext != "ttf")
                     continue;
                 
                 result ~= new UIFont(info);
@@ -197,11 +202,12 @@ public:
     override
     rect getRenderRectFor(uint glyphIndex, float baselineHeight) {
         Metrics metrics = this.getMetricsFor(glyphIndex);
-        float w = metrics.bounds.width;
-        float h = metrics.bounds.height;
-        float baselineY = floor((baselineHeight - metrics.bounds.yMin)-1.0);
-        float baselineX = floor((metrics.bounds.xMin)-1.0);
-        return rect(baselineX, baselineY - h, w, h);
+        return rect(
+            metrics.bounds.xMin - 1.0, 
+            baselineHeight - metrics.bounds.yMax - 1.0,
+            metrics.bounds.width, 
+            metrics.bounds.height
+        );
     }
 
     /**

@@ -17,9 +17,11 @@ import ha = hairetsu.math.linalg;
 final
 class GlyphManager {
 private:
+    GlyphSource mainSource_;
     GlyphSource[] sources_;
     GlyphSource[] active_;
     float size_ = 14;
+    float shear_ = 0;
 
     ptrdiff_t find(GlyphSource src) {
         foreach(i; 0..sources_.length)
@@ -36,8 +38,12 @@ private:
     }
 
     void recalculateMetrics() {
-        foreach(active; active_) {
-            active.size = size_;
+        foreach(source; active) {
+            if (!source)
+                continue;
+            
+            source.size = size_;
+            source.shear = shear_;
         }
     }
 
@@ -51,14 +57,28 @@ public:
     /**
         Active sources.
     */
-    @property GlyphSource[] active() => active_;
+    @property GlyphSource[] active() => [mainSource_] ~ active_;
 
     /**
-        Current size of the glyph source in
+        The main font being used.
+    */
+    @property GlyphSource mainSource() => mainSource_;
+
+    /**
+        Current target size.
     */
     @property float size() => size_;
     @property void size(float value) {
         this.size_ = value;
+        this.recalculateMetrics();
+    }
+
+    /**
+        Current target shear.
+    */
+    @property float shear() => shear_;
+    @property void shear(float value) {
+        this.shear_ = value;
         this.recalculateMetrics();
     }
 
@@ -98,8 +118,11 @@ public:
             glyph source.
     */
     bool hasCodepoint(uint codepoint) {
-        foreach(active; active_) {
-            uint gidx = active.getGlyphIndex(codepoint);
+        foreach(source; active) {
+            if (!source)
+                continue;
+            
+            uint gidx = source.getGlyphIndex(codepoint);
             if (gidx != GLYPH_MISSING)
                 return true;
         }
@@ -107,63 +130,40 @@ public:
     }
 
     /**
-        Gets the metrics for the given glyph index.
+        Gets the first glyph source that supports the given
+        codepoint.
 
         Params:
             codepoint = The codepoint to query.
 
         Returns:
-            The metrics for the given glyph.
+            The first glyph source that supports the codepoint,
+            $(D null) if none supports it.
     */
-    Metrics getMetricsFor(uint codepoint) {
-        foreach(active; active_) {
-            uint gidx = active.getGlyphIndex(codepoint);
+    GlyphSource getGlyphSourceFor(uint codepoint) {
+        foreach(source; active) {
+            if (!source)
+                continue;
+            
+            uint gidx = source.getGlyphIndex(codepoint);
             if (gidx != GLYPH_MISSING)
-                return active.getMetricsFor(gidx);
+                return source;
         }
-        return Metrics.init;
+        return null;
     }
 
     /**
-        Gets the source metrics for the given codepoint.
+        Sets the current active main font.
 
         Params:
-            codepoint = The codepoint to query.
-
-        Returns:
-            The metrics for the first source that provides
-            the given codepoint.
+            source = The source to deactivate.
     */
-    SourceMetrics getSourceMetricsFor(uint codepoint) {
-        foreach(active; active_) {
-            uint gidx = active.getGlyphIndex(codepoint);
-            if (gidx != GLYPH_MISSING)
-                return active.metrics;
-        }
-
-        // Some metrics is better than no metrics.
-        return 
-            active_.length > 0 ? 
-            active_[0].metrics : 
-            SourceMetrics.init;
-    }
-
-    /**
-        Rasterizes the glyph.
-
-        Params:
-            codepoint = The codepoint to query.
-
-        Returns:
-            A new rasterized bitmap.
-    */
-    Bitmap rasterize(uint codepoint) {
-        foreach(active; active_) {
-            uint gidx = active.getGlyphIndex(codepoint);
-            if (gidx != GLYPH_MISSING)
-                return active.rasterize(gidx);
-        }
-        return Bitmap.init;
+    void set(GlyphSource source) {
+        import i2d.imgui : igGetIO, igImFontAtlasBuildClear;
+        
+        this.mainSource_ = source.isRealized() ? source : source.realize();
+        this.recalculateMetrics();
+        igImFontAtlasBuildClear(igGetIO().Fonts);
     }
 
     /**
