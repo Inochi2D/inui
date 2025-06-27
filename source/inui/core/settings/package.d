@@ -1,10 +1,10 @@
 module inui.core.settings;
+import inui.core.msgbox;
+import inui.app;
+import sdl.filesystem;
 import std.json;
 import std.file;
 import std.path;
-import inui.core.msgbox;
-
-public import inui.core.settings.cfg;
 
 enum APP_LOAD_ERROR_STRING = "Oops! Your settings.json file is corrupted. Inochi Creator will load the default settings.
 The corrupted settings file has been moved to '%s'.
@@ -18,6 +18,11 @@ Error Message: %s";
 class AppSettings {
 private:
     SettingsStore store;
+    nstring configDir_;
+    nstring basePath_;
+    nstring imguiIniPath_;
+    nstring prefJsonPath_;
+    nstring[] localePaths_;
 
 public:
     
@@ -31,34 +36,50 @@ public:
     /**
         Constructs the settings manager.
     */
-    this(string storeId) {
-        store = __inc_get_settings_store(storeId);
+    this(ref AppInfo appInfo) {
+        nstring authorId = appInfo.authorId;
+        nstring appId = appInfo.appId;
+
+        const(char)* cPath = SDL_GetPrefPath(authorId.ptr, appId.ptr);
+        const(char)* bPath = SDL_GetBasePath();
+        if (cPath) configDir_ = cPath[0..nu_strlen(cPath)];
+        if (bPath) basePath_ = bPath[0..nu_strlen(bPath)];
+
+        store = __inc_get_settings_store(appInfo.id[]);
+
+        imguiIniPath_ = buildPath(configDirectory, "imgui.ini");
+        prefJsonPath_ = buildPath(configDirectory, "settings.json");
+        localePaths_ = [
+            nstring(buildPath(configDirectory, "locale")), 
+            nstring(buildPath(basePath, "locale")),
+            nstring(buildNormalizedPath(basePath, "../SharedSupport/locale"))
+        ];
     }
 
     /**
         The path where app configuration is stored.
     */
-    static @property string appConfigPath() { return uiGetAppConfigPath(); }
-    
+    @property string configDirectory() => configDir_[];
+
     /**
-        The path which custom fonts are read from.
+        The path the app was launched from.
     */
-    static @property string fontsPath() { return uiGetAppFontsPath(); }
+    @property string basePath() => basePath_[];
     
     /**
         The paths which locales are read from.
     */
-    static @property string[] localePaths() { return [uiGetAppLocalePath(), uiGetAppLocalePathExtra()]; }
+    @property nstring[] localePaths() => localePaths_;
 
     /**
         The path of the settings file.
     */
-    static @property string settingsFile() { return buildPath(uiGetAppConfigPath(), "settings.json"); }
+    @property string settingsFile() { return prefJsonPath_[]; }
     
     /**
         The path of the imgui config file.
     */
-    static @property string imguiConfigFile() { return uiGetAppImguiConfigFile(); }
+    @property string imguiConfigFile() { return imguiIniPath_[]; }
 
     /**
         Saves the app settings.

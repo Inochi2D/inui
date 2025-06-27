@@ -83,7 +83,6 @@ void uiWin32Init() @nogc {
         dwmEnableBlurBehindWindowFunc =
             cast(typeof(dwmEnableBlurBehindWindowFunc))SDL_LoadFunction(dwmapiDLL, "DwmEnableBlurBehindWindow");
     }
-
 }
 
 bool uiWin32SetVibrancy(NativeWindow window, SystemVibrancy vibrancy) @nogc {

@@ -22,6 +22,7 @@ import inui.core.window;
 import inui.core.imgui;
 import inui.window;
 import inui.menu;
+import sdl.filesystem;
 
 /**
     Information about an application.
@@ -57,6 +58,31 @@ struct AppInfo {
         The App's Web URL.
     */
     nstring url;
+
+    /**
+        The automatically generated author portion of the app id.
+    */
+    @property string authorId() {
+        ptrdiff_t sep = getAppIdSeperator();
+        return sep >= 0 ? id[0..sep] : null;
+    }
+
+    /**
+        The automatically generated name portion of the app id.
+    */
+    @property string appId() {
+        ptrdiff_t sep = getAppIdSeperator();
+        return sep >= 0 ? id[sep..$] : null;
+    }
+
+    private
+    ptrdiff_t getAppIdSeperator() {
+        foreach_reverse(i; 0..id.length) {
+            if (id[i] == '.')
+                return i;
+        }
+        return -1;
+    }
 }
 
 /**
@@ -73,7 +99,7 @@ private:
 
     // Store init routine.
     void initStore() {
-        settings_ = new AppSettings(info.id);
+        settings_ = new AppSettings(info);
     }
 
     //
@@ -89,6 +115,7 @@ private:
         assert(info.name, "Name must be specified!");
         assert(info.version_, "Version number must be specified!");
         assert(info.id, "ID must be specified!");
+        assert(info.authorId && info.appId, "ID is malformed!");
         SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_NAME_STRING, info.name.ptr);
         SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_VERSION_STRING, info.version_.ptr);
         SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_IDENTIFIER_STRING, info.id.ptr);
@@ -192,32 +219,32 @@ public:
     /**
         Path of the application executable.
     */
-    @property string executable() { return exec; }
+    @property string executable() => exec;
 
     /**
         The arguments which were passed to the application.
     */
-    @property string[] args() { return startArgs; }
+    @property string[] args() => startArgs;
 
     /**
         The app's global glyph manager.
     */
-    @property GlyphManager glyphManager() { return glyphManager_; }
+    @property GlyphManager glyphManager() => glyphManager_;
 
     /**
         The app's settings.
     */
-    @property AppSettings settings() { return settings_; }
+    @property AppSettings settings() => settings_;
 
     /**
         The app's main window.
     */
-    @property Window mainWindow() { return mainWindow_; }
+    @property Window mainWindow() => mainWindow_;
 
     /**
         The app's main menu.
     */
-    @property Menu mainMenu() { return mainMenu_; }
+    @property Menu mainMenu() => mainMenu_;
 
     /**
         Destructor
@@ -249,7 +276,7 @@ public:
 
             if (window) {
                 this.glyphManager_ = new GlyphManager();
-                this.glyphManager_.set(this.glyphManager_.sources[0]);
+                // this.glyphManager_.set(this.glyphManager_.sources[0]);
                 this.mainWindow_ = window;
                 this.mainWindow_.show();
                 

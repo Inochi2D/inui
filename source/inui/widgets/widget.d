@@ -90,7 +90,7 @@ public:
     */
     this(string id, bool randomize = true) {
         this.discriminator = randomize ? uniform(1, uint.max) : 0;
-        this.id = id;
+        this.id_ = id;
         this.regenImName();
     }
 

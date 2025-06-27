@@ -88,6 +88,8 @@ private:
     }
 
     void setupPlatform() {
+        import inui.app : Application;
+
         ImGuiPlatformIO* platformIO = igGetPlatformIO(ctx);
 
         io.BackendPlatformUserData = cast(void*)this;
@@ -512,6 +514,8 @@ private:
     //      General Implementation
     //
     void create() {
+        import inui.app : Application;
+
         this.lastSize = window.ptSize;
         this.lastScale = window.scale;
         this.ctx = igCreateContext();
@@ -521,11 +525,17 @@ private:
         io.ConfigWindowsResizeFromEdges = true;
         io.ConfigWindowsMoveFromTitleBarOnly = true;
         io.ConfigInputTextCursorBlink = true;
+        io.IniFilename = null;
         version(OSX) io.ConfigMacOSXBehaviors = true;
 
         this.setupPlatform();
         this.setupRendering();
         this.setupFonts();
+
+        // TODO: This breaks ?
+        // string ini = Application.thisApp.settings.get!string("imgui", null);
+        // if (ini)
+        //     igLoadIniSettingsFromMemory(ini.ptr, ini.length);
     }
 
     void shutdown() {
@@ -729,6 +739,15 @@ public:
     void endFrame(NativeWindow window) {
         igRender();
         this.render(igGetDrawData());
+
+        if (io.WantSaveIniSettings) {
+            import inui.app : Application;
+
+            size_t settingsSize;
+            nstring settings = igSaveIniSettingsToMemory(&settingsSize);
+            Application.thisApp.settings.set!string("imgui", settings[]);
+            io.WantSaveIniSettings = false;
+        }
     }
 
     /**
