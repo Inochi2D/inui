@@ -26,6 +26,7 @@ private:
 
     float thickness_ = 1;
     float shear_ = 0;
+    float size_ = 14;
 
 public:
 
@@ -45,7 +46,7 @@ public:
     override @property bool isRealized() => face !is null;
 
     /**
-        Current size of the glyph source in
+        Current size of the glyph source
     */
     override @property float size() => face.px;
     override @property void size(float value) { face.px = value; }
@@ -201,6 +202,9 @@ public:
     */
     override
     rect getRenderRectFor(uint glyphIndex, float baselineHeight) {
+        if (!face)
+            return rect(0, 0, 0, 0);
+        
         Metrics metrics = this.getMetricsFor(glyphIndex);
         SourceMetrics smetrics = this.metrics;
         return rect(

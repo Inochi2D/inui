@@ -25,6 +25,7 @@ private:
     GlyphSource[] active_;
     float size_ = glyphMinSize;
     float shear_ = 0;
+    float scale_ = 1;
     bool requiresRefresh = true;
 
     ptrdiff_t find(GlyphSource src) {
@@ -46,7 +47,7 @@ private:
             if (!source)
                 continue;
             
-            source.size = size_;
+            source.size = size_ * scale_;
             source.shear = shear_;
         }
         this.requiresRefresh = true;
@@ -87,6 +88,18 @@ public:
     @property float size() => size_;
     @property void size(float value) {
         this.size_ = clamp(value, glyphMinSize, glyphMaxSize);
+        this.recalculateMetrics();
+    }
+
+    /**
+        Current target size.
+
+        Default: $(D 12)
+        Range: $(D 12..255)
+    */
+    @property float scale() => scale_;
+    @property void scale(float value) {
+        this.scale_ = value;
         this.recalculateMetrics();
     }
 
@@ -224,6 +237,7 @@ public:
 
         foreach(Window window; Window.windows) {
             window.imgui.style.FontSizeBase = size_;
+            window.imgui.style.FontScaleMain = scale_;
             window.imgui.refreshFontAtlas();
         }
 

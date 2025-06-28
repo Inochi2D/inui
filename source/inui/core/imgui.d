@@ -488,8 +488,8 @@ private:
             // Generate and add glyph.
             dst.X0 = renderRect.left;
             dst.Y0 = renderRect.top;
-            dst.X1 = renderRect.right;
-            dst.Y1 = renderRect.bottom;
+            dst.X1 = renderRect.left + bitmap.width;
+            dst.Y1 = renderRect.top + bitmap.height;
             dst.Visible = true;
             dst.Colored = false;
             dst.PackId = packId;
@@ -591,7 +591,7 @@ public:
 
         // Rescale windows and fonts.
         igScaleWindowsInViewport(cast(ImGuiViewportP*)igGetMainViewport(), relScale);
-        style.FontScaleDpi = scale;
+        IGContext.glyphManager.scale = scale;
         window.ptSize = vec2i(
             cast(int)(lastSize.x * relScale), 
             cast(int)(lastSize.y * relScale)
