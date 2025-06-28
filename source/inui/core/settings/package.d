@@ -37,16 +37,14 @@ public:
         Constructs the settings manager.
     */
     this(ref AppInfo appInfo) {
+        store = __inc_get_settings_store(appInfo.id[]);
+
         nstring authorId = appInfo.authorId;
         nstring appId = appInfo.appId;
-
         const(char)* cPath = SDL_GetPrefPath(authorId.ptr, appId.ptr);
         const(char)* bPath = SDL_GetBasePath();
         if (cPath) configDir_ = cPath[0..nu_strlen(cPath)];
         if (bPath) basePath_ = bPath[0..nu_strlen(bPath)];
-
-        store = __inc_get_settings_store(appInfo.id[]);
-
         imguiIniPath_ = buildPath(configDirectory, "imgui.ini");
         prefJsonPath_ = buildPath(configDirectory, "settings.json");
         localePaths_ = [

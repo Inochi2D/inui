@@ -9,6 +9,9 @@
 module inui.core.fonts.manager;
 import inui.core.fonts.glyph;
 import inui.core.fonts.font;
+import inui.window;
+import nulib.math;
+
 import ha = hairetsu.math.linalg;
 
 /**
@@ -20,8 +23,9 @@ private:
     GlyphSource mainSource_;
     GlyphSource[] sources_;
     GlyphSource[] active_;
-    float size_ = 14;
+    float size_ = glyphMinSize;
     float shear_ = 0;
+    bool requiresRefresh = true;
 
     ptrdiff_t find(GlyphSource src) {
         foreach(i; 0..sources_.length)
@@ -45,9 +49,19 @@ private:
             source.size = size_;
             source.shear = shear_;
         }
+        this.requiresRefresh = true;
     }
-
 public:
+
+    /**
+        Minimum glyph size.
+    */
+    enum float glyphMinSize = 14;
+
+    /**
+        Maximum glyph size.
+    */
+    enum float glyphMaxSize = 255;
 
     /**
         Glyph sources.
@@ -66,15 +80,21 @@ public:
 
     /**
         Current target size.
+
+        Default: $(D 12)
+        Range: $(D 12..255)
     */
     @property float size() => size_;
     @property void size(float value) {
-        this.size_ = value;
+        this.size_ = clamp(value, glyphMinSize, glyphMaxSize);
         this.recalculateMetrics();
     }
 
     /**
         Current target shear.
+        
+        Default: $(D 0)
+        Range: $(D -1..1)
     */
     @property float shear() => shear_;
     @property void shear(float value) {
@@ -94,6 +114,8 @@ public:
     */
     this() {
         this.sources_ ~= UIFont.createFontList();
+
+        this.set(this.sources_[0]);
     }
 
     /**
@@ -159,11 +181,8 @@ public:
             source = The source to deactivate.
     */
     void set(GlyphSource source) {
-        import i2d.imgui : igGetIO, igImFontAtlasBuildClear;
-        
         this.mainSource_ = source.isRealized() ? source : source.realize();
         this.recalculateMetrics();
-        igImFontAtlasBuildClear(igGetIO().Fonts);
     }
 
     /**
@@ -195,4 +214,20 @@ public:
         active_ = active_.remove(idx);
         this.recalculateMetrics();
     }
+
+    /**
+        Refreshes the font atlasses for the open windows.
+    */
+    void refreshFontAtlasses() {
+        if (!requiresRefresh)
+            return;
+
+        foreach(Window window; Window.windows) {
+            window.imgui.style.FontSizeBase = size_;
+            window.imgui.refreshFontAtlas();
+        }
+
+        this.requiresRefresh = false;
+    }
+
 }

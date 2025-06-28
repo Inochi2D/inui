@@ -202,9 +202,10 @@ public:
     override
     rect getRenderRectFor(uint glyphIndex, float baselineHeight) {
         Metrics metrics = this.getMetricsFor(glyphIndex);
+        SourceMetrics smetrics = this.metrics;
         return rect(
-            metrics.bounds.xMin - 1.0, 
-            baselineHeight - metrics.bounds.yMax - 1.0,
+            metrics.bounds.xMin,
+            baselineHeight - metrics.bounds.yMax + (smetrics.descender.x*0.5),
             metrics.bounds.width, 
             metrics.bounds.height
         );

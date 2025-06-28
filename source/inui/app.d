@@ -139,13 +139,17 @@ private:
             uiWin32Init();
         }
 
+        this.glyphManager_ = new GlyphManager();
         this.applyInfo();
         this.initSDL();
         this.initStore();
         __sharedApplication = this;
+
+        this.glyphManager_.size = settings_.get!float("font_size", GlyphManager.glyphMinSize);
     }
 
     void shutdown() {
+        settings_.set!float("font_size", glyphManager_.size);
 
         // Shutdown Win32 Integration
         version(Windows) {
@@ -198,6 +202,8 @@ private:
             foreach(Window window; Window.windows) {
                 window.update();
             }
+            
+            glyphManager_.refreshFontAtlasses();
         }
         return 0;
     }
@@ -275,12 +281,11 @@ public:
             this.exec = args.length > 0 ? args[0] : null;
 
             if (window) {
-                this.glyphManager_ = new GlyphManager();
-                // this.glyphManager_.set(this.glyphManager_.sources[0]);
                 this.mainWindow_ = window;
                 this.mainWindow_.show();
                 
                 int ret = this.startEventLoop();
+                this.shutdown();
                 return ret;
             }
 

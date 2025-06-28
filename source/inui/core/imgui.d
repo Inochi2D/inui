@@ -18,6 +18,7 @@ import inmath;
 import numem;
 import nulib;
 import sdl;
+import sdl.misc : SDL_OpenURL;
 
 import std.stdio : printf;
 
@@ -29,6 +30,7 @@ private:
     //
     //      UI State
     //
+    bool initialized = false;
     ImGuiContext* ctx;
     NativeWindow window;
     SDL_Cursor*[ImGuiMouseCursor.COUNT] cursors;
@@ -99,7 +101,8 @@ private:
         platformIO.Platform_GetClipboardTextFn = &__Inui_GetClipboardText;
         platformIO.Platform_SetImeDataFn = &__Inui_PlatformSetImeData;
         platformIO.Platform_OpenInShellFn = (ImGuiContext*, const char* url) {
-            return false; //SDL_OpenURL(url) == 0; 
+
+            return SDL_OpenURL(url) == 0; 
         };
 
         platformIO.Platform_GetWindowDpiScale = (ImGuiViewport* vp) {
@@ -426,13 +429,13 @@ private:
         sharedFontLoader.Name = "Hairetsu";
         sharedFontLoader.LoaderInit = (ImFontAtlas* atlas) {
             atlas.FontLoaderName = "Hairetsu";
+            atlas.TexGlyphPadding = 2;
             return true;
         };
         sharedFontLoader.FontSrcContainsGlyph = (ImFontAtlas* atlas, ImFontConfig* src, ImWchar code) {
             return IGContext.glyphManager.hasCodepoint(code);
         };
         sharedFontLoader.FontBakedInit = (ImFontAtlas* atlas, ImFontConfig* src, ImFontBaked* baked, void* lddata) {
-            IGContext.glyphManager.size = baked.Size;
             return true;
         };
         sharedFontLoader.FontBakedLoadGlyph = (ImFontAtlas* atlas, ImFontConfig* src, ImFontBaked* baked, void* lddata, ImWchar code, ImFontGlyph* dst) {
@@ -461,8 +464,11 @@ private:
             if (bitmap.data.length == 0)
                 return true;
 
+            import hairetsu.raster.coverage : HaCoverageMask;
+            enum int padding = HaCoverageMask.MASK_PADDING;
+            
             // Copy bitmap data.
-            bitmap.crop(1, 1, bitmap.width-1, bitmap.height-1);
+            bitmap.crop(padding, padding, bitmap.width-padding, bitmap.height-padding);
             if (bitmap.width == 0 || bitmap.height == 0) {
                 bitmap.free();
                 return false;
@@ -525,7 +531,6 @@ private:
         io.ConfigWindowsResizeFromEdges = true;
         io.ConfigWindowsMoveFromTitleBarOnly = true;
         io.ConfigInputTextCursorBlink = true;
-        io.IniFilename = null;
         version(OSX) io.ConfigMacOSXBehaviors = true;
 
         this.setupPlatform();
@@ -533,6 +538,7 @@ private:
         this.setupFonts();
 
         // TODO: This breaks ?
+        // io.IniFilename = null;
         // string ini = Application.thisApp.settings.get!string("imgui", null);
         // if (ini)
         //     igLoadIniSettingsFromMemory(ini.ptr, ini.length);
@@ -550,6 +556,11 @@ public:
         ImGui IO Handler for this context.
     */
     @property ImGuiIO* io() { return igGetIO(ctx); }
+
+    /**
+        Style object
+    */
+    @property ImGuiStyle* style() { return &ctx.Style; }
 
     /**
         Destructor
@@ -726,28 +737,28 @@ public:
     /**
         Starts rendering a new frame.
     */
-    void beginFrame(NativeWindow window, float deltaTime) {
+    void beginFrame(float deltaTime) {
         this.platformNewFrame(io, deltaTime);
         igNewFrame();
-
-        this.updateCursor();
     }
 
     /**
         Ends the frame and renders it.
     */
-    void endFrame(NativeWindow window) {
+    void endFrame() {
         igRender();
         this.render(igGetDrawData());
+        this.updateCursor();
 
-        if (io.WantSaveIniSettings) {
-            import inui.app : Application;
+        // if (io.WantSaveIniSettings) {
+        //     import inui.app : Application;
 
-            size_t settingsSize;
-            nstring settings = igSaveIniSettingsToMemory(&settingsSize);
-            Application.thisApp.settings.set!string("imgui", settings[]);
-            io.WantSaveIniSettings = false;
-        }
+        //     size_t settingsSize;
+        //     nstring settings = igSaveIniSettingsToMemory(&settingsSize);
+        //     Application.thisApp.settings.set!string("imgui", settings[]);
+        //     io.WantSaveIniSettings = false;
+        // }
+        initialized = true;
     }
 
     /**
@@ -756,6 +767,17 @@ public:
     void makeCurrent() {
         window.gl.makeCurrent();
         igSetCurrentContext(ctx);
+    }
+
+    /**
+        Refrehshes the font altas for this imgui context.
+    */
+    void refreshFontAtlas() {
+        if (!initialized)
+            return;
+        
+        if (auto fonts = io.Fonts)
+            igImFontAtlasBuildClear(fonts);
     }
 }
 

@@ -246,9 +246,9 @@ public:
         
         context.makeCurrent();
 
-        context.beginFrame(backing, deltaTime);
+        context.beginFrame(deltaTime);
             widget.update(deltaTime);
-        context.endFrame(backing);
+        context.endFrame();
         this.swap();
     }
 
