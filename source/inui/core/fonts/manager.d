@@ -128,6 +128,7 @@ public:
     this() {
         this.sources_ ~= UIFont.createFontList();
 
+        if (sources_.length > 0)
         this.set(this.sources_[0]);
     }
 

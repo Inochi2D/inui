@@ -97,6 +97,10 @@ public:
                 result ~= new UIFont(info);
             }
         }
+        
+        version(OSX) {
+            result ~= new UIFont("/System/Library/Fonts/SFNS.ttf");
+        }
         return result;
     }
 

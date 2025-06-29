@@ -11,6 +11,9 @@
 module inui.core.settings.backends.cf;
 import inui.core.settings;
 import std.json;
+import numem;
+import numem.core.memory;
+
 version(OSX):
 
 /**
@@ -175,7 +178,7 @@ public:
     override
     bool unset(string name) {
         CFString* key = name.toCFString();
-        CFPreferencesSetAppValue(key, kCFNull, appId, kCFPreferencesCurrentUser, kCFPreferencesCurrentHost);
+        CFPreferencesSetAppValue(key, kCFNull, appId);
         return true;
     }
 
@@ -201,35 +204,36 @@ public:
 //          Minimal CoreFoundation
 //
 
-extern(C) @nogc nothrow:
+extern(C):
 
 // Base CoreFoundation things.
-extern const(void)* kCFNull;
+alias CFNull = void*;
+extern __gshared CFNull kCFNull;
 alias CFIndex = int;
 alias CFTypeID = ulong;
-extern void* CFRetain(void*);
-extern void* CFRelease(void*);
-extern CFTypeID CFGetTypeID(void*);
+extern void* CFRetain(void*) @nogc nothrow;
+extern void* CFRelease(void*) @nogc nothrow;
+extern CFTypeID CFGetTypeID(void*) @nogc nothrow;
 
 //
 //      CFARRAY
 //
 
 struct CFArray;
-extern CFTypeID CFArrayGetTypeID();
-extern CFArray* CFArrayCreate(void*, const(void)**, CFIndex, const(void)*);
-extern CFIndex CFArrayGetCount(CFArray*);
-extern void* CFArrayGetValueAtIndex(CFArray*, CFIndex);
+extern CFTypeID CFArrayGetTypeID() @nogc nothrow;
+extern CFArray* CFArrayCreate(void*, const(void)**, CFIndex, const(void)*) @nogc nothrow;
+extern CFIndex CFArrayGetCount(CFArray*) @nogc nothrow;
+extern void* CFArrayGetValueAtIndex(CFArray*, CFIndex) @nogc nothrow;
 
 //
 //      CFDICTIONARY
 //
 
 struct CFDictionary;
-extern CFTypeID CFDictionaryGetTypeID();
-extern CFDictionary* CFDictionaryCreate(void*, const(void)**, const(void)**, CFIndex, const(void)*, const(void)*);
-extern CFIndex CFDictionaryGetCount(CFDictionary*);
-extern const(void)* CFDictionaryGetValue(CFDictionary*, const(void)*);
+extern CFTypeID CFDictionaryGetTypeID() @nogc nothrow;
+extern CFDictionary* CFDictionaryCreate(void*, const(void)**, const(void)**, CFIndex, const(void)*, const(void)*) @nogc nothrow;
+extern CFIndex CFDictionaryGetCount(CFDictionary*) @nogc nothrow;
+extern const(void)* CFDictionaryGetValue(CFDictionary*, const(void)*) @nogc nothrow;
 
 //
 //      CFSTRING
@@ -238,11 +242,11 @@ enum CFStringEncoding kCFStringEncodingUTF8 = 134217984;
 alias CFStringEncoding = uint;
 
 struct CFString;
-extern CFTypeID CFStringGetTypeID();
-extern CFString* CFStringCreateWithCString(void*, const(char)*, CFStringEncoding);
-extern const(char)* CFStringGetCStringPtr(CFString*, CFStringEncoding);
-extern bool CFStringGetCString(CFString*, char*, CFIndex, CFStringEncoding);
-extern CFIndex CFStringGetLength(CFString*);
+extern CFTypeID CFStringGetTypeID() @nogc nothrow;
+extern CFString* CFStringCreateWithCString(void*, const(char)*, CFStringEncoding) @nogc nothrow;
+extern const(char)* CFStringGetCStringPtr(CFString*, CFStringEncoding) @nogc nothrow;
+extern bool CFStringGetCString(CFString*, char*, CFIndex, CFStringEncoding) @nogc nothrow;
+extern CFIndex CFStringGetLength(CFString*) @nogc nothrow;
 
 CFString* toCFString(string str) {
     import std.string : toStringz;
@@ -260,7 +264,7 @@ string toString(CFString* str) {
         }
 
         // Slow route, we have to convert ourselves.
-        char[] ret = ha_allocarr!(char)(len);
+        char[] ret = nu_malloca!(char)(len);
         if (CFStringGetCString(str, ret.ptr, len, kCFStringEncodingUTF8))
             return cast(string)ret;
     }
@@ -278,15 +282,15 @@ string toStringReleased(CFString* str) {
 //      CFBOOLEAN
 //
 struct CFBoolean;
-extern CFTypeID CFBooleanGetTypeID();
-extern bool CFBooleanGetValue(CFBoolean*);
+extern CFTypeID CFBooleanGetTypeID() @nogc nothrow;
+extern bool CFBooleanGetValue(CFBoolean*) @nogc nothrow;
 
 //
 //      CFNUMBER
 //
 
 struct CFNumber;
-extern CFTypeID CFNumberGetTypeID();
+extern CFTypeID CFNumberGetTypeID() @nogc nothrow;
 enum CFNumberType : CFIndex {
     /* Fixed-width types */
     kCFNumberSInt8Type = 1,
@@ -297,10 +301,10 @@ enum CFNumberType : CFIndex {
     kCFNumberFloat64Type = 6,	/* 64-bit IEEE 754 */
 }
 
-extern CFNumber* CFNumberCreate(void*, CFNumberType, const(void)*);
-extern CFNumberType CFNumberGetType(CFNumber*);
-extern bool CFNumberGetValue(CFNumber*, CFNumberType, void*);
-extern bool CFNumberIsFloatType(CFNumber*);
+extern CFNumber* CFNumberCreate(void*, CFNumberType, const(void)*) @nogc nothrow;
+extern CFNumberType CFNumberGetType(CFNumber*) @nogc nothrow;
+extern bool CFNumberGetValue(CFNumber*, CFNumberType, void*) @nogc nothrow;
+extern bool CFNumberIsFloatType(CFNumber*) @nogc nothrow;
 
 CFNumber* from(T)(T value) if (__traits(isScalar, T)) {
     static if (__traits(isIntegral, T)) {
@@ -321,7 +325,7 @@ CFNumber* from(T)(T value) if (__traits(isScalar, T)) {
 //
 
 alias CFPropertyList = void;
-extern bool CFPropertyListIsValid(CFPropertyList*, CFIndex);
+extern bool CFPropertyListIsValid(CFPropertyList*, CFIndex) @nogc nothrow;
 
 //
 //      CFPREFERENCES
@@ -333,7 +337,7 @@ extern __gshared const(CFString)* kCFPreferencesAnyUser;
 extern __gshared const(CFString)* kCFPreferencesAnyHost;
 extern __gshared const(CFString)* kCFPreferencesAnyApplication;
 
-extern bool CFPreferencesAppSynchronize(CFString*);
-extern CFPropertyList* CFPreferencesCopyAppValue(CFString*, CFString*);
-extern void CFPreferencesSetAppValue(CFString*, CFPropertyList*, CFString*);
-extern CFArray* CFPreferencesCopyKeyList(CFString*, CFString*, CFString*);
+extern bool CFPreferencesAppSynchronize(CFString*) @nogc nothrow;
+extern CFPropertyList* CFPreferencesCopyAppValue(CFString*, CFString*) @nogc nothrow;
+extern void CFPreferencesSetAppValue(CFString*, CFPropertyList*, CFString*) @nogc nothrow;
+extern CFArray* CFPreferencesCopyKeyList(CFString*, CFString*, CFString*) @nogc nothrow;

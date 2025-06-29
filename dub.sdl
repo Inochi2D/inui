@@ -25,6 +25,7 @@ configuration "windows" {
 configuration "macOS" {
 	platforms "osx"
 	targetType "library"
+	lflags "-framework" "Cocoa" "-framework" "OpenGL"
 	subConfiguration "i2d-imgui" "dynamic_dynamicCRT"
 }
 configuration "linux" {

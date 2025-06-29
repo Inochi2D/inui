@@ -91,12 +91,6 @@ private:
     void enforceRequiredFeatures() {
         uint major = this.majorVersion;
         uint minor = this.minorVersion;
-        bool hasDSA = 
-            (major >= 4 && minor >= 5) ||
-            extensionSupported("EXT_direct_state_access") ||
-            extensionSupported("ARB_direct_state_access");
-
-        enforce(hasDSA, "Missing required OpenGL Feature 'direct_state_access'!");
     }
 
     void queryFeatures() {

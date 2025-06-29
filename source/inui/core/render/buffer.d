@@ -141,7 +141,9 @@ public:
     */
     void upload(void[] data) {
         this.bLen = data.length;
-        glNamedBufferData(id, data.length, data.ptr, GL_DYNAMIC_DRAW);
+        
+        glBindBuffer(bType, id);
+        glBufferData(id, data.length, data.ptr, GL_DYNAMIC_DRAW);
     }
 
     /**

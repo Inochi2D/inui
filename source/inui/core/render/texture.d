@@ -134,19 +134,23 @@ private:
     // Parameter helpers.
     float getParameterf(GLenum pname) {
         float value;
-        glGetTextureParameterfv(id, pname, &value);
+        glBindTexture(GL_TEXTURE_2D, id);
+        glGetTexParameterfv(id, pname, &value);
         return value;
     }
     void setParameterf(GLenum pname, float value) {
-        glTextureParameterf(id, pname, value);
+        glBindTexture(GL_TEXTURE_2D, id);
+        glTexParameterf(id, pname, value);
     }
 
     void setParameteri(GLenum pname, int value) {
-        glTextureParameteri(id, pname, value);
+        glBindTexture(GL_TEXTURE_2D, id);
+        glTexParameteri(id, pname, value);
     }
     int getParameteri(GLenum pname) {
         int value;
-        glGetTextureParameteriv(id, pname, &value);
+        glBindTexture(GL_TEXTURE_2D, id);
+        glGetTexParameteriv(id, pname, &value);
         return value;
     }
 
@@ -159,7 +163,7 @@ private:
         GLuint _id;
         glGenTextures(1, &_id);
         glBindTexture(GL_TEXTURE_2D, _id);
-        glTextureStorage2D(_id, txLevels, format.toSpecificFormat(), txWidth, txHeight);
+        glTexStorage2D(GL_TEXTURE_2D, txLevels, format.toSpecificFormat(), txWidth, txHeight);
         return _id;
     }
 
@@ -259,8 +263,9 @@ public:
         if (format.toStride()*width*height > data.length)
             return;
         
-        glTextureSubImage2D(
-            id, 
+        glBindTexture(GL_TEXTURE_2D, id);
+        glTexSubImage2D(
+            GL_TEXTURE_2D, 
             min(abs(level), txLevels), 
             x, 
             y, 
@@ -305,8 +310,9 @@ public:
         // Calculate start data offset.
         void* rdata = data.ptr+(rowStride*src.y)+(src.x*bitsPerPixel);
         glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
-        glTextureSubImage2D(
-            id, 
+        glBindTexture(GL_TEXTURE_2D, id);
+        glTexSubImage2D(
+            GL_TEXTURE_2D, 
             min(abs(level), txLevels), 
             dst.x, 
             dst.y, 
@@ -332,8 +338,9 @@ public:
             The width and 
     */
     void upload(Image image, int x = 0, int y = 0, int level = 0) {
-        glTextureSubImage2D(
-            id, 
+        glBindTexture(GL_TEXTURE_2D, id);
+        glTexSubImage2D(
+            GL_TEXTURE_2D, 
             level, 
             min(abs(x), txWidth), 
             min(abs(y), txHeight), 
@@ -352,7 +359,7 @@ public:
             index = The index to bind the texture at.
     */
     void bind(uint index) {
-        glBindTextureUnit(index, id);
         glBindTexture(GL_TEXTURE_2D, id);
+        glActiveTexture(GL_TEXTURE0 + index);
     }
 }
