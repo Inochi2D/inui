@@ -7,9 +7,10 @@
     Authors: Luna Nielsen
 */
 module inui.core.backend.osx.cocoa;
+version(OSX):
+
 import core.attribute : selector;
 import foundation;
-version(OSX):
 
 enum NSWindowToolbarStyle : int {
     Automatic,

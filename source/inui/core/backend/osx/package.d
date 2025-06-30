@@ -7,11 +7,10 @@
     Authors: Luna Nielsen
 */
 module inui.core.backend.osx;
-import sdl.hints;
-
-public import inui.core.backend.osx.vibrancy;
-
 version(OSX):
+
+import sdl.hints;
+public import inui.core.backend.osx.vibrancy;
 
 void uiCocoaPlatformSetup() {
     SDL_SetHint(SDL_HINT_MAC_SCROLL_MOMENTUM, "1");

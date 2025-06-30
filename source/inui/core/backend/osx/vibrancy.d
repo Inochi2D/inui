@@ -7,13 +7,13 @@
     Authors: Luna Nielsen
 */
 module inui.core.backend.osx.vibrancy;
+version(OSX):
+
 import inui.core.backend.osx.cocoa;
 import inui.core.window;
 import inmath.linalg;
 import foundation;
 import objc;
-
-version(OSX):
 
 __gshared Class _sdlViewClass;
 void uiCocoaSetupVibrancy(NativeWindow window) @nogc {

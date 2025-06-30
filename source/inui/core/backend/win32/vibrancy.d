@@ -15,22 +15,22 @@ version(Windows):
 bool uiWin32SetVibrancy(NativeWindow window, SystemVibrancy vibrancy) @nogc {
     
     // Enable or disable blur-behind
-    if (dwmEnableBlurBehindWindowFunc) {
+    if (dwmEnableBlurBehindWindow) {
         DwmBlurBehind blurBehind;
         blurBehind.enable = vibrancy != SystemVibrancy.none;
-        dwmEnableBlurBehindWindowFunc(window.nativeHandle, &blurBehind);
+        dwmEnableBlurBehindWindow(window.nativeHandle, &blurBehind);
     }
 
     // Extend frame into entire view, or disable it.
-    if (dwmExtendFrameIntoClientAreaFunc) {
+    if (dwmExtendFrameIntoClientArea) {
         DwmMargins margins = vibrancy > SystemVibrancy.none ? 
             DwmMargins(-1, -1, -1, -1) :
             DwmMargins(0, 0, 0, 0);
-        cast(void)dwmExtendFrameIntoClientAreaFunc(window.nativeHandle, &margins);
+        cast(void)dwmExtendFrameIntoClientArea(window.nativeHandle, &margins);
     }
 
     // Try to enable acrylic on Windows 11+, if requested.
-    if (dwmSetWindowAttributeFunc) {
+    if (dwmSetWindowAttribute) {
         DwmSystemBackdropType backdrop;
         final switch(vibrancy) {
             case SystemVibrancy.none:
@@ -45,7 +45,7 @@ bool uiWin32SetVibrancy(NativeWindow window, SystemVibrancy vibrancy) @nogc {
                 backdrop =DwmSystemBackdropType.DWMSBT_TABBEDWINDOW;
                 break;
         }
-        dwmSetWindowAttributeFunc(window.nativeHandle, DwmWindowAttribute.DWMWA_SYSTEMBACKDROP_TYPE, &backdrop, backdrop.sizeof);
+        dwmSetWindowAttribute(window.nativeHandle, DwmWindowAttribute.DWMWA_SYSTEMBACKDROP_TYPE, &backdrop, backdrop.sizeof);
     }
 
     return true;

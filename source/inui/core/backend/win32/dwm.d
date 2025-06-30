@@ -76,21 +76,21 @@ void uiWin32Init() @nogc {
     dwmapiDLL = SDL_LoadObject("dwmapi.dll");
 
     if (dwmapiDLL) {
-        dwmExtendFrameIntoClientAreaFunc = 
-            cast(typeof(dwmExtendFrameIntoClientAreaFunc))SDL_LoadFunction(dwmapiDLL, "DwmExtendFrameIntoClientArea");
+        dwmExtendFrameIntoClientArea = 
+            cast(typeof(dwmExtendFrameIntoClientArea))SDL_LoadFunction(dwmapiDLL, "DwmExtendFrameIntoClientArea");
         
-        dwmSetWindowAttributeFunc =
-            cast(typeof(dwmSetWindowAttributeFunc))SDL_LoadFunction(dwmapiDLL, "DwmSetWindowAttribute");
+        dwmSetWindowAttribute =
+            cast(typeof(dwmSetWindowAttribute))SDL_LoadFunction(dwmapiDLL, "DwmSetWindowAttribute");
         
-        dwmEnableBlurBehindWindowFunc =
-            cast(typeof(dwmEnableBlurBehindWindowFunc))SDL_LoadFunction(dwmapiDLL, "DwmEnableBlurBehindWindow");
+        dwmEnableBlurBehindWindow =
+            cast(typeof(dwmEnableBlurBehindWindow))SDL_LoadFunction(dwmapiDLL, "DwmEnableBlurBehindWindow");
     }
 }
 
-private __gshared {
-    SDL_SharedObject* dwmapiDLL;
+__gshared {
+    private SDL_SharedObject* dwmapiDLL;
 
-    extern(Windows) @nogc nothrow HRESULT function(HWND, const(DwmMargins)*) dwmExtendFrameIntoClientAreaFunc;
-    extern(Windows) @nogc nothrow HRESULT function(HWND, DwmWindowAttribute, void*, uint) dwmSetWindowAttributeFunc;
-    extern(Windows) @nogc nothrow HRESULT function(HWND, const(DwmBlurBehind)*) dwmEnableBlurBehindWindowFunc;
+    extern(Windows) @nogc nothrow HRESULT function(HWND, const(DwmMargins)*) dwmExtendFrameIntoClientArea;
+    extern(Windows) @nogc nothrow HRESULT function(HWND, DwmWindowAttribute, void*, uint) dwmSetWindowAttribute;
+    extern(Windows) @nogc nothrow HRESULT function(HWND, const(DwmBlurBehind)*) dwmEnableBlurBehindWindow;
 }
