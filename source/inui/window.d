@@ -245,6 +245,7 @@ public:
             return;
         
         context.makeCurrent();
+        backing.update();
 
         context.beginFrame(deltaTime);
             widget.update(deltaTime);

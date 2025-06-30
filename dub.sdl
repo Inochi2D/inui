@@ -26,6 +26,8 @@ configuration "macOS" {
 	platforms "osx"
 	targetType "library"
 	lflags "-framework" "Cocoa" "-framework" "OpenGL"
+
+	dependency "objective-d" version=">=1.1.0"
 	subConfiguration "i2d-imgui" "dynamic_dynamicCRT"
 }
 configuration "linux" {

@@ -73,7 +73,10 @@ private:
     SystemVibrancy vibrancy_;
 
     // Base SDL flags to apply.
-    enum ulong BASE_FLAGS = SDL_WindowFlags.SDL_WINDOW_OPENGL | SDL_WindowFlags.SDL_WINDOW_HIDDEN | SDL_WindowFlags.SDL_WINDOW_HIGH_PIXEL_DENSITY;
+    version(OSX)
+        enum ulong BASE_FLAGS = SDL_WindowFlags.SDL_WINDOW_OPENGL | SDL_WindowFlags.SDL_WINDOW_HIDDEN | SDL_WindowFlags.SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WindowFlags.SDL_WINDOW_TRANSPARENT;
+    else 
+        enum ulong BASE_FLAGS = SDL_WindowFlags.SDL_WINDOW_OPENGL | SDL_WindowFlags.SDL_WINDOW_HIDDEN | SDL_WindowFlags.SDL_WINDOW_HIGH_PIXEL_DENSITY;
 
     T getProperty(T)(string key, T defaultValue = T.init) {
         import sdl.properties;
@@ -98,7 +101,13 @@ private:
     }
 
     // Helper that runs OS init hooks.
-    void runOsInitHooks() { }
+    void runOsInitHooks() {
+
+        version(OSX) {
+            import inui.core.backend.osx : uiCocoaSetupVibrancy;
+            uiCocoaSetupVibrancy(this);
+        }
+    }
 
 public:
 
@@ -202,6 +211,13 @@ public:
             }
         }
 
+        version(OSX) {
+            import inui.core.backend.osx : uiCocoaSetVibrancy;
+            if (uiCocoaSetVibrancy(this, value)) {
+                this.vibrancy_ = value;
+            }
+        }
+
         return this;
     }
 
@@ -278,9 +294,14 @@ public:
         The area of the NativeWindow that's safe for interactive content.
     */
     @property recti safeArea() {
-        recti r;
-        cast(void)SDL_GetWindowSafeArea(handle, cast(SDL_Rect*)&r);
-        return r;
+        version(OSX) {
+            import inui.core.backend.osx : uiCocoaGetSafeArea;
+            return uiCocoaGetSafeArea(this);
+        } else {
+            recti r;
+            cast(void)SDL_GetWindowSafeArea(handle, cast(SDL_Rect*)&r);
+            return r;
+        }
     }
 
     /**
@@ -362,6 +383,16 @@ public:
     this(string title, vec2i size, ulong flags = 0) {
         nstring zTitle = title;
         this(SDL_CreateWindow(zTitle.ptr, size.x, size.y, cast(SDL_WindowFlags)(flags | BASE_FLAGS)));
+    }
+
+    /**
+        Runs platform specific updates.
+    */
+    void update() {
+        version(OSX) {
+            import inui.core.backend.osx : uiCocoaUpdateWindow;
+            uiCocoaUpdateWindow(this);
+        }
     }
 
     /**

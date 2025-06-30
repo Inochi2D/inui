@@ -39,20 +39,7 @@ private:
     int pendingLeaveFrame;
     float lastScale;
     vec2i lastSize;
-
-    // Gets the window and framebuffer scale.
-    void getWindowSizeAndFbScale(ref ImVec2 outSize, ref ImVec2 outScale) {
-        vec2i size = window.ptSize;
-        vec2i displaySize = window.pxSize;
-        if (!window.isVisible) {
-            outSize = ImVec2(0, 0);
-            outSize = ImVec2(1, 1);
-            return;
-
-        }
-        outSize = ImVec2(size.x, size.y);
-        outScale = ImVec2(displaySize.x / size.x, displaySize.y / size.y);
-    }
+    vec2 mouseOffset = vec2(0, 0);
 
     void updateKeyModifiers(ImGuiIO* io, SDL_Keymod sdlKeyMods) nothrow {
         ImGuiIO_AddKeyEvent(io, ImGuiKey.ImGuiMod_Ctrl, (sdlKeyMods & SDL_Keymod.KMOD_CTRL) != 0);
@@ -62,7 +49,13 @@ private:
     }
 
     void platformNewFrame(ImGuiIO* io, float deltaTime) {
-        this.getWindowSizeAndFbScale(io.DisplaySize, io.DisplayFramebufferScale);
+        vec2i windowSize = window.ptSize;
+        version(OSX) {
+            recti safeArea = window.safeArea;
+            io.DisplaySize = ImVec2(safeArea.width, safeArea.height);
+        } else {
+            io.DisplaySize = ImVec2(windowSize.x, windowSize.y);
+        }
         io.DeltaTime = deltaTime;
     }
 
@@ -238,8 +231,8 @@ private:
         glClear(GL_COLOR_BUFFER_BIT);
         
         // Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
-        float fbWidth = drawData.DisplaySize.x * drawData.FramebufferScale.x;
-        float fbHeight = drawData.DisplaySize.y * drawData.FramebufferScale.y;
+        float fbWidth = drawData.DisplaySize.x;
+        float fbHeight = drawData.DisplaySize.y;
         if (fbWidth <= 0 || fbHeight <= 0)
             return;
 
@@ -617,14 +610,16 @@ public:
                 if (event.window.windowID != window.id)
                     return false;
                 
+                recti safeArea = window.safeArea;
                 lastSize = vec2i(event.window.data1, event.window.data2);
+                mouseOffset = vec2(event.window.data1 - safeArea.width, event.window.data2 - safeArea.height);
                 return true;
 
             case SDL_EventType.SDL_EVENT_MOUSE_MOTION:
                 if (event.motion.windowID != window.id)
                     return false;
-
-                ImVec2 mousePos = {cast(float) event.motion.x, cast(float) event.motion.y};
+                
+                ImVec2 mousePos = { cast(float) event.motion.x - mouseOffset.x, cast(float) event.motion.y - mouseOffset.y };
                 ImGuiIO_AddMouseSourceEvent(io,
                     event.motion.which == SDL_TOUCH_MOUSEID ?
                         ImGuiMouseSource.TouchScreen : ImGuiMouseSource.Mouse
@@ -641,7 +636,10 @@ public:
                     event.wheel.which == SDL_TOUCH_MOUSEID ?
                         ImGuiMouseSource.TouchScreen : ImGuiMouseSource.Mouse
                 );
-                ImGuiIO_AddMouseWheelEvent(io, wheel.x, wheel.y);
+
+                // Calibrated for the magic trackpad.
+                version(OSX) ImGuiIO_AddMouseWheelEvent(io, wheel.x*0.05, wheel.y*0.05);
+                else ImGuiIO_AddMouseWheelEvent(io, wheel.x, wheel.y);
                 return true;
 
             case SDL_EventType.SDL_EVENT_MOUSE_BUTTON_DOWN:

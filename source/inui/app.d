@@ -126,6 +126,11 @@ private:
 
     // SDL Init routine.
     void initSDL() {
+        version(OSX) {
+            import inui.core.backend.osx : uiCocoaPlatformSetup;
+            uiCocoaPlatformSetup();
+        }
+
         SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO);
     }
 
