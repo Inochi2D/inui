@@ -1,6 +1,3 @@
-# Output Artifacts
-out/
-
 # Dub Junk
 .dub/
 dub.selections.json
@@ -8,8 +5,12 @@ __dummy_docs/
 docs.json
 __dummy.html
 
-# VSCode Junk
+# Random Junk
 .vscode/
+.DS_Store/
+
+# Output Artifacts
+out/
 
 # Testing
 test/
