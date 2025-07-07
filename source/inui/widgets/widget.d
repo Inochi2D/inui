@@ -12,44 +12,68 @@ import std.format : format;
 import std.random : uniform;
 
 /**
-    Base class for widgets.
+    Base class of all widget-like types that can respond
+    to input.
 */
 abstract
-class Widget {
-private:
-    uint discriminator;
-    string id_;
-    string name_;
-    nstring imName_;
-
-    void regenImName() {
-        this.imName_ = "%s###%s".format(name_, id_);
-    }
-
+class Responder {
 protected:
 
     /**
-        Called once a frame to update the widget.
+        Called once a frame to update the responder.
     */
     abstract void onUpdate(float delta);
 
     /**
-        Called when the widget needs to refresh all of its 
-        information.
+        Called when the responder needs to refresh all of
+        its information.
     */
     abstract void onRefresh();
+
+public:
+
+    /**
+        Called once a frame.
+    */
+    final
+    void update(float delta) {
+        this.onUpdate(delta);
+    }
+
+    /**
+        Tells the responder to refresh all of its information.
+    */
+    final
+    void refresh() { this.onRefresh(); }
+}
+
+/**
+    Base class for widgets.
+*/
+abstract
+class Widget : Responder {
+private:
+    uint discriminator;
+    string name_;
+    string id_;
+
+    nstring imName_;
+    void regenImName() {
+        if (discriminator == 0) {
+            this.imName_ = "%s##%s".format(name_, id_);
+            return;
+        }
+
+        this.imName_ = "%s##%s%u".format(name_, id_, discriminator);
+    }
+
+protected:
     
     /**
         The ID of the widget.
     */
     final @property void id(string value) {
-        if (discriminator == 0) {
-            this.id_ = value;
-            this.regenImName();
-            return;
-        }
-
-        this.id_ = "%s%s".format(value, discriminator);
+        this.id_ = value;
         this.regenImName();
     }
 
@@ -76,7 +100,7 @@ public:
     /**
         The name of the widget.
     */
-    final @property string imName() { return imName[]; }
+    final @property string imName() { return imName_[]; }
 
     /**
         Destructor
@@ -90,23 +114,22 @@ public:
     */
     this(string id, bool randomize = true) {
         this.discriminator = randomize ? uniform(1, uint.max) : 0;
+
+        this.name_ = id;
         this.id_ = id;
         this.regenImName();
     }
 
     /**
-        Called once a frame.
+        Constructor
     */
-    final
-    void update(float delta) {
-        this.onUpdate(delta);
-    }
+    this(string id, string name, bool randomize = true) {
+        this.discriminator = randomize ? uniform(1, uint.max) : 0;
 
-    /**
-        Tells the widget to refresh all of its information.
-    */
-    final
-    void refresh() { this.onRefresh(); }
+        this.name_ = name;
+        this.id_ = id;
+        this.regenImName();
+    }
 }
 
 /**

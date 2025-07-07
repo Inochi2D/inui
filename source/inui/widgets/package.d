@@ -9,4 +9,5 @@
 module inui.widgets;
 
 public import inui.widgets.widget;
-public import inui.widgets.imgui;
+public import inui.widgets.panel;
+public import inui.widgets.textbox;
