@@ -61,6 +61,102 @@ enum SystemVibrancy : int {
 }
 
 /**
+    Color styles from the OS.
+*/
+enum ColorStyle : int {
+
+    /**
+        Base state.
+    */
+    none,
+
+    /**
+        Pressed state.
+    */
+    pressed,
+
+    /**
+        Hovered state.
+    */
+    hovered,
+
+    /**
+        Selected state.
+    */
+    selected,
+
+    /**
+        Base state of the accent color.
+    */
+    accent,
+
+    /**
+        Pressed state of the accent color.
+    */
+    accentPressed,
+
+    /**
+        Hovered state of the accent color.
+    */
+    accentHovered,
+
+    /**
+        Disabled state of the accent color.
+    */
+    disabled,
+
+    /**
+        Background color for controls.
+    */
+    background,
+
+    /**
+        Background color for controls, when hovered.
+    */
+    backgroundHovered,
+
+    /**
+        Color of links.
+    */
+    link,
+
+    /**
+        Color of text.
+    */
+    text,
+
+    /**
+        Color of disabled text.
+    */
+    textDisabled,
+
+    /**
+        Background color of selected text.
+    */
+    textSelected,
+
+    /**
+        Background color for tab sections.
+    */
+    tab,
+
+    /**
+        Background color for active tabs.
+    */
+    tabActive,
+
+    /**
+        Background color for titlebars.
+    */
+    titlebar,
+
+    /**
+        Background color for active titlebars.
+    */
+    titlebarActive,
+}
+
+/**
     A window
 */
 class NativeWindow : NuObject {
@@ -209,9 +305,7 @@ public:
             if (uiWin32SetVibrancy(this, value)) {
                 this.vibrancy_ = value;
             }
-        }
-
-        version(OSX) {
+        } else version(OSX) {
             import inui.core.backend.osx : uiCocoaSetVibrancy;
             if (uiCocoaSetVibrancy(this, value)) {
                 this.vibrancy_ = value;
@@ -439,6 +533,18 @@ public:
             return nogc_new!NativeWindow(handle);
         }
         return null;
+    }
+
+    /**
+        Gets the system-specific color for the given color style.
+    */
+    @property vec4 getColor(ColorStyle style) {
+        version(OSX) {
+            import inui.core.backend.osx : uiCocoaGetColor;
+            return uiCocoaGetColor(this, style);
+        } else {
+            return vec4.init;
+        }
     }
 
     /**

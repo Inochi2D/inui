@@ -358,7 +358,7 @@ bool __Inui_Window_EventFilter(void* userdata, SDL_Event* event) @nogc nothrow {
                 case SDL_EventType.SDL_EVENT_WINDOW_EXPOSED:
                     (cast(Window)userdata).update();
                     break;
-                
+
                 default:
                     break;
             }

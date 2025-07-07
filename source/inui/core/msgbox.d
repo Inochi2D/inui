@@ -3,9 +3,9 @@ import sdl.messagebox;
 import nulib.string;
 
 enum MessageType : SDL_MessageBoxFlags {
-    info = SDL_MessageBoxFlags.SDL_MESSAGEBOX_INFORMATION,
-    warning = SDL_MessageBoxFlags.SDL_MESSAGEBOX_WARNING,
     error = SDL_MessageBoxFlags.SDL_MESSAGEBOX_ERROR,
+    warning = SDL_MessageBoxFlags.SDL_MESSAGEBOX_WARNING,
+    info = SDL_MessageBoxFlags.SDL_MESSAGEBOX_INFORMATION,
 }
 
 /**

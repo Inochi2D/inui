@@ -11,6 +11,7 @@ version(OSX):
 
 import inui.core.backend.osx.cocoa;
 import inui.core.window;
+
 import inmath.linalg;
 import foundation;
 import objc;
@@ -25,6 +26,7 @@ void uiCocoaSetupVibrancy(NativeWindow window) @nogc {
     auto sdlview = whndl.contentView;
 
     auto crect = whndl.contentRectForFrameRect(whndl.frame);
+
     NSView rootview = NSView.alloc.initWithFrame(crect);
 
     NSVisualEffectView effectView = NSVisualEffectView.alloc.initWithFrame(rootview.frame);
@@ -33,12 +35,13 @@ void uiCocoaSetupVibrancy(NativeWindow window) @nogc {
     effectView.state = NSVisualEffectState.Active;
     effectView.isEmphasized = false;
     effectView.alphaValue = 1;
-    
+
     whndl.contentView = rootview;
     rootview.addSubview(effectView);
-    rootview.addSubview(sdlview);
     effectView.frame = rootview.frame;
+    rootview.addSubview(sdlview);
     sdlview.frame = rootview.frame;
+    sdlview.backgroundColor = NSColor.clearColor;
     
     rootview.autoresizesSubviews = true;
     rootview.addLayoutGuide(whndl.contentLayoutGuide);
@@ -86,8 +89,8 @@ bool uiCocoaSetVibrancy(NativeWindow window, SystemVibrancy vibrancy) @nogc {
     whndl.styleMask = whndl.styleMask | NSWindowStyleMask.FullSizeContentView;
     whndl.isOpaque = !wantsVibrancy;
     whndl.titlebarAppearsTransparent = true;
-
     if (effectView && sdlView) {
+        
         final switch(vibrancy) {
             case SystemVibrancy.none:
                 effectView.state = NSVisualEffectState.Inactive;
@@ -97,7 +100,6 @@ bool uiCocoaSetVibrancy(NativeWindow window, SystemVibrancy vibrancy) @nogc {
                 effectView.material = NSVisualEffectMaterial.UnderWindowBackground;
                 effectView.blendingMode = NSVisualEffectBlendingMode.BehindWindow;
                 effectView.state = NSVisualEffectState.Active;
-                effectView.isEmphasized = false;
                 break;
             
             case SystemVibrancy.vivid:

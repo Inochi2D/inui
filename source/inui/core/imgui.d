@@ -10,6 +10,7 @@ module inui.core.imgui;
 import inui.core.render;
 import inui.core.window;
 import inui.core.fonts;
+import inui.core.color;
 import inui.image;
 import bindbc.opengl;
 import i2d.imgui;
@@ -40,6 +41,8 @@ private:
     float lastScale;
     vec2i lastSize;
     vec2 mouseOffset = vec2(0, 0);
+    SystemTheme currTheme;
+    SystemTheme lastTheme;
 
     void updateKeyModifiers(ImGuiIO* io, SDL_Keymod sdlKeyMods) nothrow {
         ImGuiIO_AddKeyEvent(io, ImGuiKey.ImGuiMod_Ctrl, (sdlKeyMods & SDL_Keymod.KMOD_CTRL) != 0);
@@ -188,7 +191,7 @@ private:
         // Setup render state: alpha-blending enabled, no face culling, no depth testing, scissor enabled, polygon fill
         glEnable(GL_BLEND);
         glBlendEquation(GL_FUNC_ADD);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         glDisable(GL_CULL_FACE);
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_SCISSOR_TEST);
@@ -323,9 +326,6 @@ private:
                         // Apply scissor/clipping rectangle
                         glScissor(cast(int) clipRect.x, cast(int)(fbHeight - clipRect.w), cast(int)(
                                 clipRect.z - clipRect.x), cast(int)(clipRect.w - clipRect.y));
-
-                        // Ugly hack
-                        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
                         Texture texture = cast(Texture)cast(void*)ImTextureRef_GetTexID(cast(ImTextureRef*)&pcmd.TexRef);
 
@@ -529,6 +529,7 @@ private:
         this.setupPlatform();
         this.setupRendering();
         this.setupFonts();
+        this.updateSystemColors();
 
         // TODO: This breaks ?
         // io.IniFilename = null;
@@ -541,6 +542,89 @@ private:
         this.shutdownRendering();
         this.shutdownPlatform();
         igDestroyContext(ctx);
+    }
+
+    void updateSystemColors() {
+        currTheme = window.systemTheme;
+        if (lastTheme != currTheme) {
+            lastTheme = currTheme;
+            this.applySystemColorScheme();
+        }
+    }
+
+    void applySystemColorScheme() {
+        if (currTheme == SystemTheme.dark)    
+            igStyleColorsDark(&ctx.Style);
+        else
+            igStyleColorsLight(&ctx.Style);
+
+        // No system color scheme found.
+        if (!window.getColor(ColorStyle.none).isFinite)
+            return;
+
+        ImVec4 background = window.getColor(ColorStyle.background).toImGuiRGBA;
+        ImVec4 backgroundHovered = window.getColor(ColorStyle.backgroundHovered).toImGuiRGBA;
+        ImVec4 none = window.getColor(ColorStyle.none).toImGuiRGBA;
+        ImVec4 hovered = window.getColor(ColorStyle.hovered).toImGuiRGBA;
+        ImVec4 pressed = window.getColor(ColorStyle.pressed).toImGuiRGBA;
+        ImVec4 selected = window.getColor(ColorStyle.selected).toImGuiRGBA;
+        ImVec4 tab = window.getColor(ColorStyle.tab).toImGuiRGBA;
+        ImVec4 tabActive = window.getColor(ColorStyle.tabActive).toImGuiRGBA;
+        ImVec4 titlebar = window.getColor(ColorStyle.titlebar).toImGuiRGBA;
+        ImVec4 titlebarActive = window.getColor(ColorStyle.titlebarActive).toImGuiRGBA;
+        ImVec4 link = window.getColor(ColorStyle.link).toImGuiRGBA;
+        ImVec4 text = window.getColor(ColorStyle.text).toImGuiRGBA;
+        ImVec4 textDisabled = window.getColor(ColorStyle.textDisabled).toImGuiRGBA;
+        ImVec4 textSelected = window.getColor(ColorStyle.textSelected).toImGuiRGBA;
+
+        ctx.Style.Colors[ImGuiCol.Button] = none;
+        ctx.Style.Colors[ImGuiCol.ButtonHovered] = hovered;
+        ctx.Style.Colors[ImGuiCol.ButtonActive] = pressed;
+        ctx.Style.Colors[ImGuiCol.CheckMark] = selected;
+        ctx.Style.Colors[ImGuiCol.FrameBg] = background;
+        ctx.Style.Colors[ImGuiCol.FrameBgHovered] = backgroundHovered;
+        ctx.Style.Colors[ImGuiCol.FrameBgActive] = background;
+        ctx.Style.Colors[ImGuiCol.Text] = text;
+        ctx.Style.Colors[ImGuiCol.TextDisabled] = textDisabled;
+        ctx.Style.Colors[ImGuiCol.TextLink] = link;
+        ctx.Style.Colors[ImGuiCol.TextSelectedBg] = textSelected;
+        ctx.Style.Colors[ImGuiCol.DragDropTarget] = pressed;
+        ctx.Style.Colors[ImGuiCol.NavCursor] = pressed;
+        ctx.Style.Colors[ImGuiCol.Header] = background;
+        ctx.Style.Colors[ImGuiCol.HeaderHovered] = backgroundHovered;
+        ctx.Style.Colors[ImGuiCol.HeaderActive] = backgroundHovered;
+        ctx.Style.Colors[ImGuiCol.Separator] = background;
+        ctx.Style.Colors[ImGuiCol.SeparatorHovered] = backgroundHovered;
+        ctx.Style.Colors[ImGuiCol.SeparatorActive] = backgroundHovered;
+        ctx.Style.Colors[ImGuiCol.ResizeGrip] = background;
+        ctx.Style.Colors[ImGuiCol.ResizeGripHovered] = backgroundHovered;
+        ctx.Style.Colors[ImGuiCol.ResizeGripActive] = backgroundHovered;
+        ctx.Style.Colors[ImGuiCol.SliderGrab] = none;
+        ctx.Style.Colors[ImGuiCol.SliderGrabActive] = pressed;
+        ctx.Style.Colors[ImGuiCol.DockingPreview] = none;
+        ctx.Style.Colors[ImGuiCol.Tab] = tab;
+        ctx.Style.Colors[ImGuiCol.TabSelected] = tabActive;
+        ctx.Style.Colors[ImGuiCol.TabSelectedOverline] = tabActive;
+        ctx.Style.Colors[ImGuiCol.TabDimmed] = tab;
+        ctx.Style.Colors[ImGuiCol.TabDimmedSelected] = tabActive;
+        ctx.Style.Colors[ImGuiCol.TabDimmedSelectedOverline] = tabActive;
+        ctx.Style.Colors[ImGuiCol.TabHovered] = tabActive;
+        ctx.Style.Colors[ImGuiCol.TitleBg] = titlebar;
+        ctx.Style.Colors[ImGuiCol.TitleBgCollapsed] = titlebar;
+        ctx.Style.Colors[ImGuiCol.TitleBgActive] = titlebarActive;
+
+        ctx.Style.FramePadding = ImVec2(6, 4);
+        ctx.Style.FrameRounding = 6;
+        ctx.Style.GrabRounding = 6;
+        ctx.Style.FrameBorderSize = 1;
+        ctx.Style.TabBarBorderSize = 0;
+        ctx.Style.Colors[ImGuiCol.BorderShadow] = ctx.Style.Colors[ImGuiCol.Border];
+        ctx.Style.Colors[ImGuiCol.WindowBg].w = 0.50;
+        ctx.Style.Colors[ImGuiCol.TitleBg].w = 0.25;
+        ctx.Style.Colors[ImGuiCol.TitleBgCollapsed].w = 0.25;
+        ctx.Style.Colors[ImGuiCol.TitleBgActive].w = 0.25;
+        ctx.Style.Colors[ImGuiCol.BorderShadow].w = 0.15;
+        ctx.Style.Colors[ImGuiCol.Border].w = 0;
     }
 
 public:
@@ -604,6 +688,10 @@ public:
                     return false;
                 
                 this.rescale();
+                return true;
+            
+            case SDL_EventType.SDL_EVENT_SYSTEM_THEME_CHANGED:
+                this.updateSystemColors();
                 return true;
             
             case SDL_EventType.SDL_EVENT_WINDOW_RESIZED:
@@ -736,6 +824,7 @@ public:
         Starts rendering a new frame.
     */
     void beginFrame(float deltaTime) {
+        this.updateSystemColors();
         this.platformNewFrame(io, deltaTime);
         igNewFrame();
     }

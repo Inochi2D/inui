@@ -20,8 +20,8 @@ import inui.core.fonts;
 import inui.core.settings;
 import inui.core.window;
 import inui.core.imgui;
+import inui.core.menu;
 import inui.window;
-import inui.menu;
 import sdl.filesystem;
 
 /**

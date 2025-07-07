@@ -11,5 +11,4 @@ module inui;
 public import inui.app;
 public import inui.image;
 public import inui.widgets;
-public import inui.menu;
 public import inui.window;

@@ -23,7 +23,7 @@ protected:
     */
     override
     void onUpdate(float delta) {
-        igDockSpaceOverViewport(0, null, ImGuiDockNodeFlags.PassthruCentralNode);
+        igDockSpaceOverViewport(0, null, ImGuiDockNodeFlags.PassthruCentralNode | ImGuiDockNodeFlagsI.NoWindowMenuButton);
         super.onUpdate(delta);
     }
 

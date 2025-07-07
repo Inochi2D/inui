@@ -10,6 +10,7 @@ module inui.core.fonts.font;
 import inui.core.fonts.glyph;
 import inmath.linalg;
 import nulib.math;
+import nulib.string : nu_strlen;
 import numem;
 
 import ha = hairetsu;
@@ -83,14 +84,14 @@ public:
         UIFont[] result;
         auto fontlist = ha.FontCollection.createFromSystem();
         foreach(ha.FontFamily family; fontlist.families) {
-            foreach(ha.FontFaceInfo info; family.faces) {
+            foreach(ref ha.FontFaceInfo info; family.faces) {
                 if (info.outlines != ha.GlyphType.trueType)
                     continue;
                 
                 if (info.variable)
                     continue;
-
-                string ext = info.path[$-4..$-1].toLower();
+                
+                string ext = info.path.ptr[nu_strlen(info.path.ptr)-3..nu_strlen(info.path.ptr)].dup.toLower();
                 if (ext != "ttf")
                     continue;
                 

@@ -6,12 +6,13 @@
     
     Authors: Luna Nielsen
 */
-module inui.menu;
+module inui.core.menu;
+import core.attribute : weak;
 import numem;
 import nulib;
 
 private
-extern(C) Menu __inui_menu_create(string title) @nogc;
+extern(C) Menu __inui_menu_create(string title) @nogc @weak;
 
 /**
     A menu
@@ -68,7 +69,7 @@ public:
 }
 
 private
-extern(C) MenuItem __inui_menuitem_create(string text, menuItemAction action, string shortcut) @nogc;
+extern(C) MenuItem __inui_menuitem_create(string text, menuItemAction action, string shortcut) @nogc @weak;
 
 /**
     A menu item
