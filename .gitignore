@@ -7,7 +7,7 @@ __dummy.html
 
 # Random Junk
 .vscode/
-.DS_Store/
+.DS_Store
 
 # Output Artifacts
 out/
