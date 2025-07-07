@@ -16,11 +16,13 @@ import i2d.imgui;
 */
 class TextBox : Widget {
 private:
+    enum BASE_FLAGS = ImGuiInputTextFlags.CallbackResize | ImGuiInputTextFlags.EnterReturnsTrue;
+    ImGuiInputTextFlags flags_ = BASE_FLAGS;
+
     nstring placeholder;
     nstring buffer;
 
-    static
-    extern(C) int __text_callback(ImGuiInputTextCallbackData* data) {
+    static extern(C) int __text_callback(ImGuiInputTextCallbackData* data) {
         TextBox self = (cast(TextBox)data.UserData);
         switch(data.EventFlag) {
             
@@ -42,14 +44,20 @@ private:
 protected:
 
     /**
+        The active flags of the text box.
+    */
+    ImGuiInputTextFlags flags() => flags_;
+    void flags(uint value) {
+        flags_ = cast(ImGuiInputTextFlags)(BASE_FLAGS | value);
+    }
+
+    /**
         Called once a frame to update the widget.
     */
     override
     void onUpdate(float delta) {
         char* buf = cast(char*)buffer.ptr;
-
-        auto flags = ImGuiInputTextFlags.CallbackResize | ImGuiInputTextFlags.EnterReturnsTrue;
-        if (igInputTextWithHint(imName.ptr, placeholder.ptr, buf, buffer.realLength, flags, &__text_callback, cast(void*)this)) {
+        if (igInputTextWithHint(imName.ptr, placeholder.ptr, buf, buffer.realLength, flags_, &__text_callback, cast(void*)this)) {
             if (submit) {
                 this.submit(buffer[0..$]);
             }
@@ -63,7 +71,29 @@ protected:
     override
     void onRefresh() { }
 
+    /**
+        Constructs a new text box.
+
+        Params:
+            name        = The name of the widget.
+            placeholder = The text which should be shown if the textbox is empty.
+            text        = The text that the textbox should start out with.
+    */
+    this(string name, string placeholder, string text) {
+        super(name, "", true);
+        this.placeholder = placeholder;
+        this.buffer = text.length > 0 ? text : "\0";
+    }
+
 public:
+
+    /**
+        The content of the text box.
+    */
+    @property string text() => buffer[0..$];
+    @property void text(string text) {
+        buffer = text;
+    }
 
     /**
         Optional text filter function.
@@ -94,22 +124,8 @@ public:
             placeholder = The text which should be shown if the textbox is empty.
             text        = The text that the textbox should start out with.
     */
-    this(string placeholder, string text) {
-        super("TextBox", "", true);
-        this.placeholder = placeholder;
-        this.buffer = text;
-    }
-
-    /**
-        Constructs a new text box.
-
-        Params:
-            placeholder = The text which should be shown if the textbox is empty.
-    */
-    this(string placeholder) {
-        super("TextBox", "", true);
-        this.placeholder = placeholder;
-        this.buffer = "\0";
+    this(string placeholder, string text = null) {
+        this("TextBox", placeholder, text);
     }
 
     /**
@@ -128,3 +144,24 @@ public:
         return this;
     }
 }
+
+
+/**
+    A text box that hides the written characters and disallows copying.
+*/
+class SecretTextBox : TextBox {
+public:
+
+    /**
+        Constructs a new secret text box.
+
+        Params:
+            placeholder = The text which should be shown if the textbox is empty.
+            text        = The text that the textbox should start out with.
+    */
+    this(string placeholder, string text = null) {
+        super("SecretTextBox", placeholder, text);
+        this.flags = ImGuiInputTextFlags.Password;
+    }
+}
+
