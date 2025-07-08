@@ -385,9 +385,10 @@ protected:
 
         Params:
             name        = The name of the control.
+            tag         = Optional tag to use.
     */
-    this(string name) {
-        super(name, name, true);
+    this(string name, string tag = null) {
+        super(tag ? tag : name, name, true);
         this.styleElement.onPsuedo = &this.onPsuedo;
     }
 

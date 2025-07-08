@@ -93,7 +93,7 @@ protected:
             text        = The text that the textbox should start out with.
     */
     this(string name, string placeholder, string text) {
-        super(name);
+        super("", name);
         this.placeholder = placeholder;
         this.buffer = text.length > 0 ? text : "\0";
     }
