@@ -55,7 +55,8 @@ protected:
         Called once a frame to update the widget.
     */
     override
-    void onDraw(DrawContext ctx, StyleRule computed, float delta) {
+    void onDraw(DrawContext ctx, float delta) {
+        
         char* buf = cast(char*)buffer.ptr;
         igSetNextItemWidth(sizeRequest.x <= 0 ? -float.min_normal : sizeRequest.x);
         if (igInputTextWithHint(imName.ptr, placeholder.ptr, buf, buffer.realLength, flags_, &__text_callback, cast(void*)this)) {

@@ -147,6 +147,11 @@ enum MouseButton {
 enum Alignment {
 
     /**
+        Inherit alignment.
+    */
+    inherit,
+
+    /**
         Left alignment.
     */
     left,
@@ -162,16 +167,34 @@ enum Alignment {
     right
 }
 
+Alignment alignmentFromString(string alignment) {
+    switch(alignment) {
+        case "left":
+            return Alignment.left;
+        
+        case "center":
+            return Alignment.center;
+        
+        case "right":
+            return Alignment.right;
+        
+        default:
+            return Alignment.inherit;
+    }
+}
+
 /**
     An interactive control.
 */
 abstract
 class Control : Widget {
 private:
+    bool prevHovered_;
     bool hovered_;
     bool active_;
     bool focused_;
     Alignment alignment_;
+
     bool allowsOverlap_;
     vec2 sizeRequest_ = vec2(0, 0);
     vec2 actualSize_ = vec2(0, 0);
@@ -179,10 +202,11 @@ private:
     bool onPsuedo(string name, string arg) {
         switch(name) {
             case "hover":
-            case "hot":
                 return hovered_;
+
             case "active":
                 return active_;
+
             case "focused":
                 return focused_;
             
@@ -215,32 +239,36 @@ protected:
         implementation.
     */
     override void onUpdate(float delta) {
-        StyleRule computed = this.computedStyle();
-        this.onDrawEarly(DrawContext(igGetBackgroundDrawList()), computed, delta);
+        this.onDrawEarly(DrawContext(igGetBackgroundDrawList()), delta);
 
             if (allowsOverlap) igSetNextItemAllowOverlap();
 
             auto lrect = layoutRegion;
             auto lstart = layoutCursor;
             final switch(alignment_) {
+                case Alignment.inherit:
+                    this.onDraw(DrawContext(igGetWindowDrawList()), delta);
+                    break;
+                
                 case Alignment.left:
-                    this.onDraw(DrawContext(igGetWindowDrawList()), computed, delta);
+                    this.onDraw(DrawContext(igGetWindowDrawList()), delta);
                     break;
                 
                 case Alignment.center:
                     layoutCursor = lstart + vec2((lrect.width/2)-(actualSize_.x/2), 0);
-                    this.onDraw(DrawContext(igGetWindowDrawList()), computed, delta);
+                    this.onDraw(DrawContext(igGetWindowDrawList()), delta);
                     layoutCursor = vec2(lstart.x, lstart.y + actualSize_.y);
                     break;
                 
                 case Alignment.right:
                     layoutCursor = lstart + vec2(lrect.width-actualSize_.x, 0);
-                    this.onDraw(DrawContext(igGetWindowDrawList()), computed, delta);
+                    this.onDraw(DrawContext(igGetWindowDrawList()), delta);
                     layoutCursor = vec2(lstart.x, lstart.y + actualSize_.y);
                     break;
             }
 
             igGetItemRectSize(cast(ImVec2*)&actualSize_);
+            prevHovered_ = hovered_;
             hovered_ = igIsItemHovered();
             active_ = igIsItemActive();
             focused_ = igIsItemFocused();
@@ -253,23 +281,39 @@ protected:
             if (igIsItemClicked(ImGuiMouseButton.Right))
                 this.onClicked(MouseButton.right);
             
-            if (igIsItemEdited())
+            if (igIsItemEdited()) {
                 this.onEdited();
+                this.refresh(); 
+            }
 
-            if (igIsItemActivated())
+            if (igIsItemActivated()) {
                 this.onActivate();
+                this.refresh(); 
+            }
 
-            if (igIsItemDeactivated())
+            if (prevHovered_ != hovered_) {
+                if (hovered_) this.onHoverEnter();
+                else this.onHoverLeave();
+                this.refresh();
+            }
+
+            if (igIsItemDeactivated()) {
                 this.onDeactivate(igIsItemDeactivatedAfterEdit());
+                this.refresh();
+            }
         
-        this.onDrawLate(DrawContext(igGetForegroundDrawList()), computed, delta);
+        this.onDrawLate(DrawContext(igGetForegroundDrawList()), delta);
     }
 
     /**
         Called when the widget needs to refresh all of its 
         information.
     */
-    override void onRefresh() { }
+    override
+    void onRefresh() {
+        super.onRefresh();
+        alignment_ = computedStyle.alignment;
+    }
 
     /**
         Called when the control wants to draw onto the context.
@@ -281,7 +325,7 @@ protected:
             ctx = The drawing context.
             delta = Time since last frame.
     */
-    void onDrawEarly(DrawContext ctx, StyleRule computed, float delta) { }
+    void onDrawEarly(DrawContext ctx, float delta) { }
 
     /**
         Called when the control wants to draw onto the context.
@@ -290,7 +334,7 @@ protected:
             ctx = The drawing context.
             delta = Time since last frame.
     */
-    void onDraw(DrawContext ctx, StyleRule computed, float delta) { }
+    void onDraw(DrawContext ctx, float delta) { }
 
     /**
         Called when the control wants to draw onto the context.
@@ -301,7 +345,17 @@ protected:
             ctx = The drawing context.
             delta = Time since last frame.
     */
-    void onDrawLate(DrawContext ctx, StyleRule computed, float delta) { }
+    void onDrawLate(DrawContext ctx, float delta) { }
+
+    /**
+        Called when the control has begun to be hovered.
+    */
+    void onHoverEnter() { }
+
+    /**
+        Called when the control is no longer hovered.
+    */
+    void onHoverLeave() { }
 
     /**
         Called when the control is clicked.
@@ -330,8 +384,7 @@ protected:
             name        = The name of the control.
     */
     this(string name) {
-        super(name, "", true);
-        this.styleTag = name;
+        super(name, name, true);
         this.styleElement.onPsuedo = &this.onPsuedo;
     }
 
@@ -353,7 +406,6 @@ public:
         Alignment of the control.
     */
     @property Alignment alignment() => alignment_;
-    @property void alignment(Alignment value) {this.alignment_ = value; }
 
     /**
         Whether the control is being hovered over.

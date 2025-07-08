@@ -10,7 +10,7 @@ module inui.core.imgui;
 import inui.core.render;
 import inui.core.window;
 import inui.core.fonts;
-import inui.core.color;
+import inui.core.utils;
 import inui.image;
 import bindbc.opengl;
 import i2d.imgui;
@@ -562,20 +562,20 @@ private:
         if (!window.getColor(ColorStyle.none).isFinite)
             return;
 
-        ImVec4 background = window.getColor(ColorStyle.background).toImGuiRGBA;
-        ImVec4 backgroundHovered = window.getColor(ColorStyle.backgroundHovered).toImGuiRGBA;
-        ImVec4 none = window.getColor(ColorStyle.none).toImGuiRGBA;
-        ImVec4 hovered = window.getColor(ColorStyle.hovered).toImGuiRGBA;
-        ImVec4 pressed = window.getColor(ColorStyle.pressed).toImGuiRGBA;
-        ImVec4 selected = window.getColor(ColorStyle.selected).toImGuiRGBA;
-        ImVec4 tab = window.getColor(ColorStyle.tab).toImGuiRGBA;
-        ImVec4 tabActive = window.getColor(ColorStyle.tabActive).toImGuiRGBA;
-        ImVec4 titlebar = window.getColor(ColorStyle.titlebar).toImGuiRGBA;
-        ImVec4 titlebarActive = window.getColor(ColorStyle.titlebarActive).toImGuiRGBA;
-        ImVec4 link = window.getColor(ColorStyle.link).toImGuiRGBA;
-        ImVec4 text = window.getColor(ColorStyle.text).toImGuiRGBA;
-        ImVec4 textDisabled = window.getColor(ColorStyle.textDisabled).toImGuiRGBA;
-        ImVec4 textSelected = window.getColor(ColorStyle.textSelected).toImGuiRGBA;
+        ImVec4 background = window.getColor(ColorStyle.background).toImGui!ImVec4;
+        ImVec4 backgroundHovered = window.getColor(ColorStyle.backgroundHovered).toImGui!ImVec4;
+        ImVec4 none = window.getColor(ColorStyle.none).toImGui!ImVec4;
+        ImVec4 hovered = window.getColor(ColorStyle.hovered).toImGui!ImVec4;
+        ImVec4 pressed = window.getColor(ColorStyle.pressed).toImGui!ImVec4;
+        ImVec4 selected = window.getColor(ColorStyle.selected).toImGui!ImVec4;
+        ImVec4 tab = window.getColor(ColorStyle.tab).toImGui!ImVec4;
+        ImVec4 tabActive = window.getColor(ColorStyle.tabActive).toImGui!ImVec4;
+        ImVec4 titlebar = window.getColor(ColorStyle.titlebar).toImGui!ImVec4;
+        ImVec4 titlebarActive = window.getColor(ColorStyle.titlebarActive).toImGui!ImVec4;
+        ImVec4 link = window.getColor(ColorStyle.link).toImGui!ImVec4;
+        ImVec4 text = window.getColor(ColorStyle.text).toImGui!ImVec4;
+        ImVec4 textDisabled = window.getColor(ColorStyle.textDisabled).toImGui!ImVec4;
+        ImVec4 textSelected = window.getColor(ColorStyle.textSelected).toImGui!ImVec4;
 
         ctx.Style.Colors[ImGuiCol.Button] = none;
         ctx.Style.Colors[ImGuiCol.ButtonHovered] = hovered;

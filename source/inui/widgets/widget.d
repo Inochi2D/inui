@@ -7,11 +7,20 @@
     Authors: Luna Nielsen
 */
 module inui.widgets.widget;
+import inui.core.utils;
 import inui.style;
-import nulib.string;
-import std.format : format;
-import std.random : uniform;
 import inui.app;
+
+import inmath.linalg;
+import nulib.string;
+import i2d.imgui;
+import std.random : uniform;
+import std.format : format;
+
+/**
+    IDs for different UI element types for color styling.
+*/
+alias StyleElementId = ImGuiCol;
 
 /**
     Base class of all widget-like types that can respond
@@ -31,22 +40,6 @@ protected:
         its information.
     */
     abstract void onRefresh();
-
-public:
-
-    /**
-        Called once a frame.
-    */
-    final
-    void update(float delta) {
-        this.onUpdate(delta);
-    }
-
-    /**
-        Tells the responder to refresh all of its information.
-    */
-    final
-    void refresh() { this.onRefresh(); }
 }
 
 /**
@@ -55,26 +48,55 @@ public:
 abstract
 class Widget : Responder {
 private:
-    StyleElement selem_;
+
+    // ImGui
     uint discriminator;
-    string name_;
+    string tag_;
     string id_;
+    string name_;
 
     nstring imName_;
     void regenImName() {
+
+        if (tag_) selem_.tag = tag_;
+        if (id_) selem_.attributes["id"] = id_;
+        if (name_) selem_.attributes["name"] = name_;
+
         if (discriminator == 0) {
-            this.imName_ = "%s##%s".format(name_, id_);
+            this.imName_ = "%s##%s".format(name_, tag_);
             return;
         }
 
-        this.imName_ = "%s##%s%u".format(name_, id_, discriminator);
+        this.imName_ = "%s##%s%u".format(name_, tag_, discriminator);
     }
 
+    // CSS
+    StyleElement selem_;
+    StyleRule computed_;
+    int pushedColors_;
+    int pushedVars_;
+
+
+
 protected:
+
+    /**
+        Computed style sheet.
+    */
+    @property StyleRule computedStyle() => computed_;
+
     /**
         Style element for the widget.
     */
     final @property StyleElement styleElement() => selem_;
+    
+    /**
+        The tag of the widget.
+    */
+    final @property void tag(string value) {
+        this.tag_ = value;
+        this.regenImName();
+    }
     
     /**
         The ID of the widget.
@@ -92,40 +114,54 @@ protected:
         this.regenImName();
     }
 
-public:
+    /**
+        Called when the widget needs to refresh all of its 
+        information.
+    */
+    override
+    void onRefresh() {
+        debug(css_refresh) {
+            import std.stdio : writefln;
+            writefln("Recomputed style for %s...", this.styleElement);
+        }
+        
+        // Recomputes style
+        computed_ = Application.thisApp.stylesheet.findRule(selem_);
+    }
 
     /**
-        The style tag for this widget.
+        Helper which pushes a style color to the stack automatically.
     */
-    final @property ref string styleTag() { return selem_.tag; }
+    void pushStyleColor(StyleElementId col, vec4 color) {
+        if (!color.isFinite)
+            return;
+        
+        igPushStyleColor(col, color.toImGui!ImVec4);
+        pushedColors_++;
+    }
+
+public:
 
     /**
         The style class for this widget.
     */
-    final @property ref string styleClass() { 
-        if ("class" !in selem_.attributes)
-            selem_.attributes["class"] = null;
-        return selem_.attributes["class"];
+    final @property string styleClass() { 
+        return "class" in selem_.attributes ? selem_.attributes["class"] : "";
+    }
+    final @property void styleClass(string value) { 
+        selem_.attributes["class"] = value;
+        this.refresh();
     }
 
     /**
-        The style id for this widget.
-    */
-    final @property ref string styleId() {
-        if ("id" !in selem_.attributes)
-            selem_.attributes["id"] = null;
-        return selem_.attributes["id"];
-    }
-
-    /**
-        The computed style rule for this widget.
-    */
-    final @property StyleRule computedStyle() { return Application.thisApp.stylesheet.findRule(selem_); }
-
-    /**
-        The ID of the widget.
+        The id of the widget.
     */
     final @property string id() { return id_[]; }
+
+    /**
+        The tag of the widget.
+    */
+    final @property string tag() { return tag_[]; }
 
     /**
         The name of the widget.
@@ -133,7 +169,7 @@ public:
     final @property string name() { return name_[]; }
 
     /**
-        The name of the widget.
+        The imgui name of the widget.
     */
     final @property string imName() { return imName_[]; }
 
@@ -147,20 +183,33 @@ public:
     /**
         Constructor
     */
-    this(string id, bool randomize = true) {
-        this(id, id, randomize);
+    this(string tag, string name, bool randomize = true) {
+        this.discriminator = randomize ? uniform(1, uint.max) : 0;
+
+        this.tag_ = tag;
+        this.name_ = name;
+        this.selem_ = new StyleElement();
+        this.regenImName();
     }
 
     /**
-        Constructor
+        Called once a frame.
     */
-    this(string id, string name, bool randomize = true) {
-        this.discriminator = randomize ? uniform(1, uint.max) : 0;
+    final
+    void update(float delta) {
+        this.onUpdate(delta);
+        if (pushedColors_ > 0) {
+            igPopStyleColor(pushedColors_);
+            pushedColors_ = 0;
+        }
+    }
 
-        this.name_ = name;
-        this.id_ = id;
-        this.selem_ = new StyleElement();
-        this.regenImName();
+    /**
+        Tells the responder to refresh all of its information.
+    */
+    final
+    void refresh() {
+        this.onRefresh();
     }
 }
 
@@ -242,8 +291,15 @@ public:
     /**
         Constructor
     */
+    this(string tag, string name, bool randomize = true) {
+        super(tag, name, randomize);
+    }
+
+    /**
+        Constructor
+    */
     this(string name, bool randomize = true) {
-        super(name, randomize);
+        super("container", name, randomize);
     }
 }
 

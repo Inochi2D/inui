@@ -16,35 +16,36 @@ import i2d.imgui;
     A button
 */
 class Button : Control {
+private:
+
+    // CSS
+    vec4 bgcolor_;
+    vec4 color_;
+
 protected:
 
     /**
         Called once a frame to update the widget.
     */
     override
-    void onDraw(DrawContext ctx, StyleRule computed, float delta) {
-        int pstyles = 0;
-
-        ImGuiCol btnStyleState = isActive ? ImGuiCol.ButtonActive : isHovered ? ImGuiCol.ButtonHovered : ImGuiCol.Button;
-        vec4 bgcolor = computed.backgroundColor;
-        vec4 color = computed.color;
-
-        if (bgcolor.isFinite) {
-            igPushStyleColor(btnStyleState, bgcolor.toImGui!ImVec4);
-            pstyles++;
-        }
-
-        if (color.isFinite) {
-            igPushStyleColor(ImGuiCol.Text, color.toImGui!ImVec4);
-            pstyles++;
-        }
+    void onDraw(DrawContext ctx, float delta) {
+        this.pushStyleColor(ImGuiCol.ButtonActive, bgcolor_);
+        this.pushStyleColor(ImGuiCol.ButtonHovered, bgcolor_);
+        this.pushStyleColor(ImGuiCol.Button, bgcolor_);
+        this.pushStyleColor(ImGuiCol.Text, color_);
 
         if (igButton(imName.ptr, sizeRequest.toImGui!ImVec2)) {
             if (onSubmit)
                 this.onSubmit(this);
         }
+    }
 
-        if (pstyles > 0) igPopStyleColor(pstyles);
+    override
+    void onRefresh() {
+        super.onRefresh();
+
+        bgcolor_ = computedStyle.backgroundColor;
+        color_ = computedStyle.color;
     }
 
 public:
