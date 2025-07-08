@@ -63,10 +63,9 @@ public:
             text        = The text that should be on the button
             size        = The size of the button.
     */
-    this(string text, vec2 size = vec2(0, 0)) {
+    this(string text) {
         super("button");
         this.name = text;
-        this.sizeRequest = size;
     }
 
     /**

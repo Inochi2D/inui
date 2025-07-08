@@ -67,10 +67,30 @@ struct StyleRule {
     /**
         Alignment for widgets.
     */
-    Alignment alignment() {
+    @property Alignment alignment() {
         return 
             has("align") ? 
             alignmentFromString(properties["align"].token(0, variables)) : 
             Alignment.inherit;
+    }
+
+    /**
+        Width
+    */
+    float width(float max) {
+        if (!has("width") || properties["width"].values.length == 0)
+            return 0;
+        
+        return properties["width"].values[0].computed(max, 96);
+    }
+
+    /**
+        Height
+    */
+    float height(float max) {
+        if (!has("height"))
+            return 0;
+        
+        return properties["height"].values[0].computed(max, 96);
     }
 }

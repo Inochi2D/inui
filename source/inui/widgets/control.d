@@ -245,6 +245,9 @@ protected:
 
             auto lrect = layoutRegion;
             auto lstart = layoutCursor;
+            
+            sizeRequest_.x = computedStyle.width(lrect.width);
+            sizeRequest_.y = computedStyle.height(lrect.height);
             final switch(alignment_) {
                 case Alignment.inherit:
                     this.onDraw(DrawContext(igGetWindowDrawList()), delta);
@@ -394,7 +397,6 @@ public:
         The requested size of the control.
     */
     @property vec2 sizeRequest() => sizeRequest_;
-    @property void sizeRequest(vec2 value) {this.sizeRequest_ = value; }
 
     /**
         Whether the control allows being overlapped.

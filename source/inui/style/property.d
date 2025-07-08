@@ -251,10 +251,10 @@ public:
 
             // Try parsing as number
             size_t i = 0;
-            while(i < value.length) {
+            do {
                 if (!isNumber(value[i]) && value[i] != '.')
                     break;
-            }
+            } while(i++ < value.length);
 
             if (i > 0) {
 
@@ -307,4 +307,35 @@ public:
         Creates a token style value
     */
     static StyleValue createToken(string value) => StyleValue(vtype: StyleValueType.token, token_: value);
+
+    /**
+        Calculates the real number value.
+    */
+    float computed(float max, float dpi, float default_ = 0) {
+        switch(vtype) {
+
+            case StyleValueType.token:
+                if (token_ == "inherit")
+                    return max;
+
+                // TODO: Add auto
+                if (token_ == "auto")
+                    return float.nan;
+                
+                return default_;
+
+            case StyleValueType.number:
+            case StyleValueType.px:
+                return number_;
+
+            case StyleValueType.pt:
+                return number_ * dpi;
+
+            case StyleValueType.pct:
+                return max * number_;
+            
+            default:
+                return default_;
+        }
+    }
 }

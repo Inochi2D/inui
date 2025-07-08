@@ -10,12 +10,14 @@ module inui.widgets.textbox;
 import inui.widgets.control;
 import nulib.string;
 import i2d.imgui;
+import inmath.linalg;
 
 /**
     A textbox with an internally managed null terminated string buffer.
 */
 class TextBox : Control {
 private:
+
     enum BASE_FLAGS = ImGuiInputTextFlags.CallbackResize | ImGuiInputTextFlags.EnterReturnsTrue;
     ImGuiInputTextFlags flags_ = BASE_FLAGS;
 
@@ -41,6 +43,10 @@ private:
         }
     }
 
+    // CSS
+    vec4 bgcolor_;
+    vec4 color_;
+
 protected:
 
     /**
@@ -56,7 +62,11 @@ protected:
     */
     override
     void onDraw(DrawContext ctx, float delta) {
-        
+        this.pushStyleColor(ImGuiCol.FrameBg, bgcolor_);
+        this.pushStyleColor(ImGuiCol.FrameBgHovered, bgcolor_);
+        this.pushStyleColor(ImGuiCol.FrameBgActive, bgcolor_);
+        this.pushStyleColor(ImGuiCol.Text, color_);
+
         char* buf = cast(char*)buffer.ptr;
         igSetNextItemWidth(sizeRequest.x <= 0 ? -float.min_normal : sizeRequest.x);
         if (igInputTextWithHint(imName.ptr, placeholder.ptr, buf, buffer.realLength, flags_, &__text_callback, cast(void*)this)) {
@@ -70,7 +80,9 @@ protected:
         information.
     */
     override
-    void onRefresh() { }
+    void onRefresh() {
+        super.onRefresh();
+    }
 
     /**
         Constructs a new text box.
