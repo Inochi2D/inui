@@ -13,3 +13,4 @@ public import inui.widgets.control;
 public import inui.widgets.textbox;
 public import inui.widgets.button;
 public import inui.widgets.panel;
+public import inui.style.box;

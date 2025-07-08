@@ -558,6 +558,8 @@ private:
         else
             igStyleColorsLight(&ctx.Style);
 
+        ctx.Style.FramePadding = ImVec2(0, 0);
+
         // No system color scheme found.
         if (!window.getColor(ColorStyle.none).isFinite)
             return;

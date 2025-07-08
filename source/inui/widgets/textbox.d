@@ -43,7 +43,7 @@ private:
         }
     }
 
-    // CSS
+    // CSS Colors
     vec4 bgcolor_;
     vec4 color_;
 
@@ -68,7 +68,7 @@ protected:
         this.pushStyleColor(ImGuiCol.Text, color_);
 
         char* buf = cast(char*)buffer.ptr;
-        igSetNextItemWidth(sizeRequest.x <= 0 ? -float.min_normal : sizeRequest.x);
+        igSetNextItemWidth(requestedSize.x <= 0 ? -float.min_normal : requestedSize.x);
         if (igInputTextWithHint(imName.ptr, placeholder.ptr, buf, buffer.realLength, flags_, &__text_callback, cast(void*)this)) {
             if (onSubmit)
                 this.onSubmit(this);
@@ -88,12 +88,12 @@ protected:
         Constructs a new text box.
 
         Params:
-            name        = The name of the widget.
+            tag         = The tag of the widget.
             placeholder = The text which should be shown if the textbox is empty.
             text        = The text that the textbox should start out with.
     */
-    this(string name, string placeholder, string text) {
-        super("", name);
+    this(string tag, string placeholder, string text) {
+        super("", tag);
         this.placeholder = placeholder;
         this.buffer = text.length > 0 ? text : "\0";
     }

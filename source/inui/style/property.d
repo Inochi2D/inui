@@ -229,6 +229,11 @@ public:
     @property bool isVariable() => vtype == StyleValueType.variable;
 
     /**
+        Whether the style value is a variable.
+    */
+    @property bool isToken() => vtype == StyleValueType.token;
+
+    /**
         Parses the given style value
     */
     static StyleValue parse(string value) {
@@ -313,17 +318,6 @@ public:
     */
     float computed(float max, float dpi, float default_ = 0) {
         switch(vtype) {
-
-            case StyleValueType.token:
-                if (token_ == "inherit")
-                    return max;
-
-                // TODO: Add auto
-                if (token_ == "auto")
-                    return float.nan;
-                
-                return default_;
-
             case StyleValueType.number:
             case StyleValueType.px:
                 return number_;

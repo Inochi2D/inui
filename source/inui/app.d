@@ -174,7 +174,8 @@ private:
     void delegate(ref SDL_Event ev)[] handlers;
 
     int startEventLoop() {
-        while(mainWindow_ && !mainWindow_.isCloseRequested) {
+        bool first = true;
+        do {
 
             SDL_PumpEvents();
             SDL_Event ev;
@@ -209,11 +210,16 @@ private:
             foreach(Window window; Window.windows) {
                 window.update();
             }
-            
             glyphManager_.refreshFontAtlasses();
-        }
+
+            if (first) {
+                first = false;
+                foreach(window; Window.windows)
+                    window.refresh();
+            }
+        } while(mainWindow_ && !mainWindow_.isCloseRequested);
         return 0;
-    }
+    } 
 
 public:
 

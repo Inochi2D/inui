@@ -142,48 +142,6 @@ enum MouseButton {
 }
 
 /**
-    Alignment for controls.
-*/
-enum Alignment {
-
-    /**
-        Inherit alignment.
-    */
-    inherit,
-
-    /**
-        Left alignment.
-    */
-    left,
-
-    /**
-        Center alignment
-    */
-    center,
-
-    /**
-        Right hand size alignment.
-    */
-    right
-}
-
-Alignment alignmentFromString(string alignment) {
-    switch(alignment) {
-        case "left":
-            return Alignment.left;
-        
-        case "center":
-            return Alignment.center;
-        
-        case "right":
-            return Alignment.right;
-        
-        default:
-            return Alignment.inherit;
-    }
-}
-
-/**
     An interactive control.
 */
 abstract
@@ -193,10 +151,8 @@ private:
     bool hovered_;
     bool active_;
     bool focused_;
-    Alignment alignment_;
 
     bool allowsOverlap_;
-    vec2 sizeRequest_ = vec2(0, 0);
     vec2 actualSize_ = vec2(0, 0);
 
     bool onPsuedo(string name, string arg) {
@@ -216,6 +172,9 @@ private:
     }
 
 protected:
+
+    // CSS
+    BoxModel cssbox;
 
     /**
         The cursor position for the current layout.
@@ -243,34 +202,64 @@ protected:
 
             if (allowsOverlap) igSetNextItemAllowOverlap();
 
+
             auto lrect = layoutRegion;
-            auto lstart = layoutCursor;
-            
-            sizeRequest_.x = computedStyle.width(lrect.width);
-            sizeRequest_.y = computedStyle.height(lrect.height);
-            final switch(alignment_) {
+            auto prect = rect(
+                lrect.x         + cssbox.padding.x,
+                lrect.y         + cssbox.padding.y,
+                lrect.width     - cssbox.padding.z,
+                lrect.height    - cssbox.padding.w,
+            );
+
+            auto totalMargins = cssbox.totalMargins;
+            auto totalPadding = cssbox.totalPadding;
+            auto totalOffset = totalMargins + totalPadding;
+            cssbox.requestedSize = vec2(
+                computedStyle.width(lrect.width - totalOffset.x, cssbox.contentSize.x),
+                computedStyle.height(lrect.height - totalOffset.y, cssbox.contentSize.y)
+            );
+
+            auto computedArea = rect(
+                lrect.x,
+                lrect.y,
+                cssbox.computedSize.x + totalOffset.x,
+                cssbox.computedSize.y + totalOffset.y,
+            );
+
+            // Ensure layout.
+            igDummy(ImVec2(
+                computedArea.width,
+                computedArea.bottom
+            ));
+
+            final switch(cssbox.alignSelf) {
                 case Alignment.inherit:
-                    this.onDraw(DrawContext(igGetWindowDrawList()), delta);
+                    layoutCursor = vec2(prect.x, prect.y);
                     break;
                 
                 case Alignment.left:
-                    this.onDraw(DrawContext(igGetWindowDrawList()), delta);
+                    layoutCursor = vec2(prect.x, prect.y);
                     break;
                 
                 case Alignment.center:
-                    layoutCursor = lstart + vec2((lrect.width/2)-(actualSize_.x/2), 0);
-                    this.onDraw(DrawContext(igGetWindowDrawList()), delta);
-                    layoutCursor = vec2(lstart.x, lstart.y + actualSize_.y);
+                    layoutCursor = vec2(prect.center.x-computedArea.center.x, prect.top);
                     break;
                 
                 case Alignment.right:
-                    layoutCursor = lstart + vec2(lrect.width-actualSize_.x, 0);
-                    this.onDraw(DrawContext(igGetWindowDrawList()), delta);
-                    layoutCursor = vec2(lstart.x, lstart.y + actualSize_.y);
+                    layoutCursor = vec2(prect.right-computedArea.width, prect.top);
                     break;
             }
 
-            igGetItemRectSize(cast(ImVec2*)&actualSize_);
+            igSetNextItemWidth(cssbox.requestedSize.x);
+            this.onDraw(DrawContext(igGetWindowDrawList()), delta);
+            igGetItemRectSize(cast(ImVec2*)&cssbox.computedSize);
+            
+            // Next line.
+            layoutCursor = vec2(
+                computedArea.left, 
+                computedArea.bottom
+            );
+
             prevHovered_ = hovered_;
             hovered_ = igIsItemHovered();
             active_ = igIsItemActive();
@@ -315,7 +304,22 @@ protected:
     override
     void onRefresh() {
         super.onRefresh();
-        alignment_ = computedStyle.alignment;
+        vec2 halfSize = cssbox.computedSize/2.0;
+
+        cssbox.alignContent = computedStyle.alignContent;
+        cssbox.alignSelf = computedStyle.alignSelf;
+        cssbox.padding = computedStyle.rect(
+            "padding", 
+            vec2(0, 0), 
+            vec2(0, 0)
+        );
+
+        cssbox.margins = computedStyle.rect(
+            "margins", 
+            vec2(0, 0), 
+            vec2(0, 0)
+        );
+        cssbox.borderRadius = computedStyle.corners("border-radius", vec4(0, 0, 0, 0), halfSize.xyxy);
     }
 
     /**
@@ -397,7 +401,7 @@ public:
     /**
         The requested size of the control.
     */
-    @property vec2 sizeRequest() => sizeRequest_;
+    @property vec2 requestedSize() => cssbox.requestedSize;
 
     /**
         Whether the control allows being overlapped.
@@ -408,7 +412,7 @@ public:
     /**
         Alignment of the control.
     */
-    @property Alignment alignment() => alignment_;
+    @property Alignment alignment() => cssbox.alignSelf;
 
     /**
         Whether the control is being hovered over.

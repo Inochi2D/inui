@@ -29,7 +29,8 @@ private:
     StyleProperty cprop;
 
     string parseNext(ref string value) {
-        string rval;
+        if (value.length == 0)
+            return null;
 
         size_t j = value.length;
         int depth = 0;
@@ -43,8 +44,8 @@ private:
             }
         }
 
-        rval = value[0..j].dup;
-        value = value[rval.length..$];
+        string rval = value[0..j].dup;
+        value = rval.length == value.length ? null : value[j+1..$];
         return rval;
     }
 

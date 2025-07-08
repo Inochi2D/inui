@@ -12,5 +12,6 @@ public import inui.style.stylesheet;
 public import inui.style.rule;
 public import inui.style.property;
 public import inui.style.element;
+public import inui.style.box;
 
 

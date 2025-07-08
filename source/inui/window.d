@@ -254,6 +254,14 @@ public:
     }
 
     /**
+        Refreshes the window
+    */
+    void refresh() {
+        if (widget)
+            widget.refresh();
+    }
+
+    /**
         Starts text input for the window.
 
         Returns:

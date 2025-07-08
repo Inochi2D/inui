@@ -10,6 +10,7 @@ module inui.widgets.button;
 import inui.widgets.control;
 import inui.core.utils;
 import inmath.linalg;
+import inmath : max;
 import i2d.imgui;
 
 /**
@@ -17,6 +18,14 @@ import i2d.imgui;
 */
 class Button : Control {
 private:
+    ImVec2 textSize = ImVec2(0, 0);
+    void updateTextSize() {
+        if (igGetFontBaked()) {
+            igCalcTextSize(&textSize, text.ptr, text.ptr+text.length);
+            cssbox.contentSize.x = textSize.x;
+            cssbox.contentSize.y = igGetTextLineHeight()+8;
+        }
+    }
 
     // CSS
     vec4 bgcolor_;
@@ -34,7 +43,8 @@ protected:
         this.pushStyleColor(ImGuiCol.Button, bgcolor_);
         this.pushStyleColor(ImGuiCol.Text, color_);
 
-        if (igButton(imName.ptr, sizeRequest.toImGui!ImVec2)) {
+        cssbox.requestedSize = max(cssbox.requestedSize, cssbox.contentSize);
+        if (igButton(imName.ptr, cssbox.requestedSize.toImGui!ImVec2)) {
             if (onSubmit)
                 this.onSubmit(this);
         }
@@ -43,9 +53,9 @@ protected:
     override
     void onRefresh() {
         super.onRefresh();
-
         bgcolor_ = computedStyle.backgroundColor;
         color_ = computedStyle.color;
+        this.updateTextSize();
     }
 
 public:
@@ -54,7 +64,9 @@ public:
         The text of the button
     */
     @property string text() => this.name;
-    @property void text(string text) { this.name = text; }
+    @property void text(string value) { 
+        this.name = value;
+    }
 
     /**
         Constructs a new button.
