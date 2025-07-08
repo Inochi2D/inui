@@ -7,9 +7,11 @@
     Authors: Luna Nielsen
 */
 module inui.widgets.widget;
+import inui.style;
 import nulib.string;
 import std.format : format;
 import std.random : uniform;
+import inui.app;
 
 /**
     Base class of all widget-like types that can respond
@@ -53,6 +55,7 @@ public:
 abstract
 class Widget : Responder {
 private:
+    StyleElement selem_;
     uint discriminator;
     string name_;
     string id_;
@@ -68,6 +71,10 @@ private:
     }
 
 protected:
+    /**
+        Style element for the widget.
+    */
+    final @property StyleElement styleElement() => selem_;
     
     /**
         The ID of the widget.
@@ -86,6 +93,34 @@ protected:
     }
 
 public:
+
+    /**
+        The style tag for this widget.
+    */
+    final @property ref string styleTag() { return selem_.tag; }
+
+    /**
+        The style class for this widget.
+    */
+    final @property ref string styleClass() { 
+        if ("class" !in selem_.attributes)
+            selem_.attributes["class"] = null;
+        return selem_.attributes["class"];
+    }
+
+    /**
+        The style id for this widget.
+    */
+    final @property ref string styleId() {
+        if ("id" !in selem_.attributes)
+            selem_.attributes["id"] = null;
+        return selem_.attributes["id"];
+    }
+
+    /**
+        The computed style rule for this widget.
+    */
+    final @property StyleRule computedStyle() { return Application.thisApp.stylesheet.findRule(selem_); }
 
     /**
         The ID of the widget.
@@ -113,11 +148,7 @@ public:
         Constructor
     */
     this(string id, bool randomize = true) {
-        this.discriminator = randomize ? uniform(1, uint.max) : 0;
-
-        this.name_ = id;
-        this.id_ = id;
-        this.regenImName();
+        this(id, id, randomize);
     }
 
     /**
@@ -128,6 +159,7 @@ public:
 
         this.name_ = name;
         this.id_ = id;
+        this.selem_ = new StyleElement();
         this.regenImName();
     }
 }
@@ -191,6 +223,8 @@ public:
         if (findWidget(widget) == -1)
             this.children_ ~= widget;
         
+        // Set the parent styling element.
+        widget.selem_.parent = this.selem_;
         return this;
     }
     

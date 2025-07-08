@@ -21,6 +21,7 @@ import inui.core.settings;
 import inui.core.window;
 import inui.core.imgui;
 import inui.core.menu;
+import inui.style;
 import inui.window;
 import sdl.filesystem;
 
@@ -96,6 +97,7 @@ private:
     //          SETTINGS
     //
     AppSettings settings_;
+    StyleSheet stylesheet_;
 
     // Store init routine.
     void initStore() {
@@ -236,6 +238,11 @@ public:
         The arguments which were passed to the application.
     */
     @property string[] args() => startArgs;
+
+    /**
+        The app's global stylesheet.
+    */
+    @property ref StyleSheet stylesheet() => stylesheet_;
 
     /**
         The app's global glyph manager.

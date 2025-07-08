@@ -22,11 +22,29 @@ protected:
         Called once a frame to update the widget.
     */
     override
-    void onDraw(DrawContext ctx, float delta) {
+    void onDraw(DrawContext ctx, StyleRule computed, float delta) {
+        int pstyles = 0;
+
+        ImGuiCol btnStyleState = isActive ? ImGuiCol.ButtonActive : isHovered ? ImGuiCol.ButtonHovered : ImGuiCol.Button;
+        vec4 bgcolor = computed.backgroundColor;
+        vec4 color = computed.color;
+
+        if (bgcolor.isFinite) {
+            igPushStyleColor(btnStyleState, bgcolor.toImGui!ImVec4);
+            pstyles++;
+        }
+
+        if (color.isFinite) {
+            igPushStyleColor(ImGuiCol.Text, color.toImGui!ImVec4);
+            pstyles++;
+        }
+
         if (igButton(imName.ptr, sizeRequest.toImGui!ImVec2)) {
             if (onSubmit)
                 this.onSubmit(this);
         }
+
+        if (pstyles > 0) igPopStyleColor(pstyles);
     }
 
 public:
@@ -45,7 +63,7 @@ public:
             size        = The size of the button.
     */
     this(string text, vec2 size = vec2(0, 0)) {
-        super("Button");
+        super("button");
         this.name = text;
         this.sizeRequest = size;
     }

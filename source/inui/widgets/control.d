@@ -12,6 +12,8 @@ import inui.core.utils;
 import inmath.linalg;
 import i2d.imgui;
 
+public import inui.style;
+
 struct DrawContext {
 private:
 @nogc:
@@ -174,6 +176,21 @@ private:
     vec2 sizeRequest_ = vec2(0, 0);
     vec2 actualSize_ = vec2(0, 0);
 
+    bool onPsuedo(string name, string arg) {
+        switch(name) {
+            case "hover":
+            case "hot":
+                return hovered_;
+            case "active":
+                return active_;
+            case "focused":
+                return focused_;
+            
+            default:
+                return false;
+        }
+    }
+
 protected:
 
     /**
@@ -198,7 +215,8 @@ protected:
         implementation.
     */
     override void onUpdate(float delta) {
-        this.onDrawEarly(DrawContext(igGetBackgroundDrawList()), delta);
+        StyleRule computed = this.computedStyle();
+        this.onDrawEarly(DrawContext(igGetBackgroundDrawList()), computed, delta);
 
             if (allowsOverlap) igSetNextItemAllowOverlap();
 
@@ -206,18 +224,18 @@ protected:
             auto lstart = layoutCursor;
             final switch(alignment_) {
                 case Alignment.left:
-                    this.onDraw(DrawContext(igGetWindowDrawList()), delta);
+                    this.onDraw(DrawContext(igGetWindowDrawList()), computed, delta);
                     break;
                 
                 case Alignment.center:
                     layoutCursor = lstart + vec2((lrect.width/2)-(actualSize_.x/2), 0);
-                    this.onDraw(DrawContext(igGetWindowDrawList()), delta);
+                    this.onDraw(DrawContext(igGetWindowDrawList()), computed, delta);
                     layoutCursor = vec2(lstart.x, lstart.y + actualSize_.y);
                     break;
                 
                 case Alignment.right:
                     layoutCursor = lstart + vec2(lrect.width-actualSize_.x, 0);
-                    this.onDraw(DrawContext(igGetWindowDrawList()), delta);
+                    this.onDraw(DrawContext(igGetWindowDrawList()), computed, delta);
                     layoutCursor = vec2(lstart.x, lstart.y + actualSize_.y);
                     break;
             }
@@ -244,7 +262,7 @@ protected:
             if (igIsItemDeactivated())
                 this.onDeactivate(igIsItemDeactivatedAfterEdit());
         
-        this.onDrawLate(DrawContext(igGetForegroundDrawList()), delta);
+        this.onDrawLate(DrawContext(igGetForegroundDrawList()), computed, delta);
     }
 
     /**
@@ -263,7 +281,7 @@ protected:
             ctx = The drawing context.
             delta = Time since last frame.
     */
-    void onDrawEarly(DrawContext ctx, float delta) { }
+    void onDrawEarly(DrawContext ctx, StyleRule computed, float delta) { }
 
     /**
         Called when the control wants to draw onto the context.
@@ -272,7 +290,7 @@ protected:
             ctx = The drawing context.
             delta = Time since last frame.
     */
-    void onDraw(DrawContext ctx, float delta) { }
+    void onDraw(DrawContext ctx, StyleRule computed, float delta) { }
 
     /**
         Called when the control wants to draw onto the context.
@@ -283,7 +301,7 @@ protected:
             ctx = The drawing context.
             delta = Time since last frame.
     */
-    void onDrawLate(DrawContext ctx, float delta) { }
+    void onDrawLate(DrawContext ctx, StyleRule computed, float delta) { }
 
     /**
         Called when the control is clicked.
@@ -313,6 +331,8 @@ protected:
     */
     this(string name) {
         super(name, "", true);
+        this.styleTag = name;
+        this.styleElement.onPsuedo = &this.onPsuedo;
     }
 
 public:

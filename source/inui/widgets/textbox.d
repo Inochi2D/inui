@@ -55,7 +55,7 @@ protected:
         Called once a frame to update the widget.
     */
     override
-    void onDraw(DrawContext ctx, float delta) {
+    void onDraw(DrawContext ctx, StyleRule computed, float delta) {
         char* buf = cast(char*)buffer.ptr;
         igSetNextItemWidth(sizeRequest.x <= 0 ? -float.min_normal : sizeRequest.x);
         if (igInputTextWithHint(imName.ptr, placeholder.ptr, buf, buffer.realLength, flags_, &__text_callback, cast(void*)this)) {
@@ -125,7 +125,7 @@ public:
             text        = The text that the textbox should start out with.
     */
     this(string placeholder, string text = null) {
-        this("TextBox", placeholder, text);
+        this("textbox", placeholder, text);
     }
 
     /**
@@ -160,7 +160,7 @@ public:
             text        = The text that the textbox should start out with.
     */
     this(string placeholder, string text = null) {
-        super("SecretTextBox", placeholder, text);
+        super("textbox", placeholder, text);
         this.flags = ImGuiInputTextFlags.Password;
     }
 }
