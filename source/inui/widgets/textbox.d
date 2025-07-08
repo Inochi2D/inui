@@ -7,14 +7,14 @@
     Authors: Luna Nielsen
 */
 module inui.widgets.textbox;
-import inui.widgets.widget;
+import inui.widgets.control;
 import nulib.string;
 import i2d.imgui;
 
 /**
     A textbox with an internally managed null terminated string buffer.
 */
-class TextBox : Widget {
+class TextBox : Control {
 private:
     enum BASE_FLAGS = ImGuiInputTextFlags.CallbackResize | ImGuiInputTextFlags.EnterReturnsTrue;
     ImGuiInputTextFlags flags_ = BASE_FLAGS;
@@ -32,8 +32,8 @@ private:
                 return 0;
             
             case ImGuiInputTextFlags.CallbackCharFilter:
-                if (self.textFilter)
-                    return self.textFilter(data.EventChar);
+                if (self.onTextFilter)
+                    return self.onTextFilter(data.EventChar);
                 return 0;
 
             default:
@@ -55,12 +55,12 @@ protected:
         Called once a frame to update the widget.
     */
     override
-    void onUpdate(float delta) {
+    void onDraw(DrawContext ctx, float delta) {
         char* buf = cast(char*)buffer.ptr;
+        igSetNextItemWidth(sizeRequest.x <= 0 ? -float.min_normal : sizeRequest.x);
         if (igInputTextWithHint(imName.ptr, placeholder.ptr, buf, buffer.realLength, flags_, &__text_callback, cast(void*)this)) {
-            if (submit) {
-                this.submit(buffer[0..$]);
-            }
+            if (onSubmit)
+                this.onSubmit(this);
         }
     }
 
@@ -80,7 +80,7 @@ protected:
             text        = The text that the textbox should start out with.
     */
     this(string name, string placeholder, string text) {
-        super(name, "", true);
+        super(name);
         this.placeholder = placeholder;
         this.buffer = text.length > 0 ? text : "\0";
     }
@@ -102,12 +102,12 @@ public:
             $(D true) to discard the character, $(D false) to keep
             the possibly modified character.
     */
-    bool function(ref ImWchar codepoint) textFilter;
+    bool function(ref ImWchar codepoint) onTextFilter;
 
     /**
         Called when the text is submitted.
     */
-    void delegate(string text) submit;
+    void delegate(TextBox self) onSubmit;
 
     /*
         Destructor
@@ -131,8 +131,8 @@ public:
     /**
         Sets the submit callback for the text box.
     */
-    TextBox setOnSubmit(void delegate(string text) submit) {
-        this.submit = submit;
+    TextBox setOnSubmit(void delegate(TextBox self) submit) {
+        this.onSubmit = submit;
         return this;
     }
 
@@ -140,7 +140,7 @@ public:
         Sets the text filter callback for the text box.
     */
     TextBox setFilter(bool function(ref ImWchar codepoint) textFilter) {
-        this.textFilter = textFilter;
+        this.onTextFilter = textFilter;
         return this;
     }
 }
