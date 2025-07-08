@@ -21,4 +21,4 @@ InUI depends on a few libraries to function correctly, the libraries are as foll
 | `glibc`        | Only tested w/ glibc, ymmv with other C runtimes on Linux. |   🐧    |
 | `MSVC 2022+`   |                                                            |   🪟    |
 | `D 2.111`      |                                                            |   All    |
-| `OpenGL 3.2`   | Additionally, `direct_state_access` is required.           |   All    |
+| `OpenGL 3.2`   |                                                            |   All    |
