@@ -28,7 +28,7 @@ protected:
     /**
         Called when OpenGL is in control of drawing.
     */
-    abstract void onGLDraw(float delta);
+    abstract void onDrawGL(float delta);
 
     override
     void onDraw(DrawContext ctx, float delta) {
@@ -36,15 +36,20 @@ protected:
             return;
 
         gl.beginFrame();
-            this.onGLDraw(delta);
+            this.onDrawGL(delta);
         gl.endFrame();
         igImage(ImTextureRef(null, cast(ImTextureID)cast(void*)gl.hostFramebuffer), cssbox.requestedSize.toImGui!ImVec2);
     }
 
     override
     void onSizeChanged(vec2 oldSize, vec2 newSize) {
-        if (newSize.x == 0 || newSize.y == 0)
+        if (newSize.x <= 1 || newSize.y <= 1) {
+            if (this.gl) {
+                this.gl.release();
+                this.gl = null;
+            }
             return;
+        }
 
         if (!gl) {
             this.gl = window.renderer.createSubContext(cast(uint)newSize.x, cast(uint)newSize.y, "opengl");
