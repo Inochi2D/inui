@@ -44,7 +44,7 @@ protected:
     override
     void onSizeChanged(vec2 oldSize, vec2 newSize) {
         if (newSize.x <= 1 || newSize.y <= 1) {
-            if (this.gl) {
+            if (gl) {
                 this.gl.release();
                 this.gl = null;
             }
@@ -60,6 +60,13 @@ protected:
     }
 
 public:
+
+    ~this() {
+        if (gl) {
+            this.gl.release();
+            this.gl = null;
+        }
+    }
 
     this() {
         super("glview");
