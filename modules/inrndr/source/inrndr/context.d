@@ -11,7 +11,6 @@ module inrndr.context;
 import inrndr.texture;
 import inrndr.buffer;
 import inrndr.shader;
-import inrndr.gl;
 import inmath;
 import numem;
 import sdl;
@@ -42,6 +41,24 @@ public:
     static RenderContext createContext(SDL_Window* window) {
         return __inui_create_render_context_for(window);
     }
+
+    /**
+        The valid forms of subcontext that can be created for this
+        render context.
+    */
+    abstract @property string[] validSubContextTypes();
+
+    /**
+        Creates an embedded GL context which can be rendered by the render context.
+
+        Params:
+            type = The type of sub context to create.
+        
+        Returns:
+            A new sub context if possible,
+            $(D null) otherwise.
+    */
+    abstract SubRenderContext createSubContext(uint width, uint height, string type="opengl");
 
     /**
         Creates a new texture for the context.
@@ -116,6 +133,64 @@ public:
         Called by the user at the end of a frame.
     */
     void endFrame() { }
+}
+
+/**
+    A sub-context.
+*/
+abstract
+class SubRenderContext : NuRefCounted {
+private:
+@nogc:
+    RenderContext parent;
+
+protected:
+
+    /**
+        Creates a new sub render context.
+    */
+    this(RenderContext parent) {
+        this.parent = parent;
+    }
+
+public:
+
+    /**
+        Gets the framebuffer texture in the format used internally
+        by the sub-render context.
+    */
+    abstract @property void* viewFramebuffer();
+
+    /**
+        Gets the framebuffer texture in the format used by
+        the host for rendering the sub context to the screen.
+    */
+    abstract @property Texture hostFramebuffer();
+
+    /**
+        Width of the framebuffer of the context.
+    */
+    abstract @property uint fbWidth();
+
+    /**
+        Height of the framebuffer of the context.
+    */
+    abstract @property uint fbHeight();
+
+    /**
+        Resizes the render context.
+    */
+    abstract void resize(uint width, uint height);
+
+    /**
+        Called by the user at the start of a frame.
+    */
+    abstract void beginFrame();
+
+    /**
+        Called by the user at the end of a frame.
+    */
+    abstract void endFrame();
 }
 
 //

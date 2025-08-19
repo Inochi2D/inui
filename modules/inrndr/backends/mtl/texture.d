@@ -194,6 +194,12 @@ public:
         ));
     }
 
+    this(MTLTexture texture) {
+        this.width_ = cast(uint)texture.width;
+        this.height_ = cast(uint)texture.height;
+        this.format_ = texture.pixelFormat.fromMTLPixelFormat();
+        this.texture_ = texture;
+    }
 
     this(CAMetalDrawable drawable) {
         this.width_ = cast(uint)drawable.texture.width;

@@ -14,6 +14,7 @@ import inmath.linalg;
     Container for box model variables.
 */
 struct BoxModel {
+@nogc:
 
     /**
         The base "auto" size of the box

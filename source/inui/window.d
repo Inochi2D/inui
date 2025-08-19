@@ -27,6 +27,7 @@ class Window {
 private:
     NativeWindow backing;
     IGContext context;
+    Widget widget_;
     long prevTime_;
     long currTime_;
     float deltaTime_;
@@ -54,7 +55,16 @@ public:
     /**
         The root level widget of the window.
     */
-    Widget widget;
+    @property Widget widget() => widget_;
+    @property auto widget(Widget value) {
+        if (this.widget_)
+            this.widget_.setWindow(null);
+
+        this.widget_ = value;
+        this.widget_.setWindow(this);
+        return this;
+    }
+
 
     /**
         All currently active windows.
@@ -71,6 +81,11 @@ public:
         The backing native window.
     */
     @property NativeWindow backingWindow() { return backing; }
+
+    /**
+        The backing renderer.
+    */
+    @property RenderContext renderer() { return backing.renderer; }
     
     /**
         Whether the window has a vibrancy effect.

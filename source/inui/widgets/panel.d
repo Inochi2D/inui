@@ -48,12 +48,21 @@ protected:
 public:
 
     /**
-        Adds a panel to the workspace.
+        Adds a new panel to the workspace.
     */
-    Workspace add(Panel panel) {
-        this.panels ~= panel;
-        panel.styleElement.parent = this.styleElement;
-        return this;
+    override
+    Widget add(Widget widget) {
+        if (Panel panel = cast(Panel)widget) {
+            if (panel.parent)
+                return this;
+            
+            this.panels ~= panel;
+            panel.reparentTo(this);
+
+            panel.styleElement.parent = this.styleElement;
+            return this;
+        }
+        return super.add(widget);
     }
 
     /**

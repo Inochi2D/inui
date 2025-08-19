@@ -152,9 +152,8 @@ private:
     bool active_;
     bool focused_;
 
+    vec2 lastSize = vec2(0, 0);
     bool allowsOverlap_;
-    vec2 actualSize_ = vec2(0, 0);
-
     bool onPsuedo(string name, string arg) {
         switch(name) {
             case "hover":
@@ -218,6 +217,11 @@ protected:
                 computedStyle.width(lrect.width - totalOffset.x, cssbox.contentSize.x),
                 computedStyle.height(lrect.height - totalOffset.y, cssbox.contentSize.y)
             );
+
+            if (cssbox.requestedSize != lastSize) {
+                this.onSizeChanged(lastSize, cssbox.requestedSize);
+                lastSize = cssbox.requestedSize;
+            }
 
             auto computedArea = rect(
                 lrect.x,
@@ -383,6 +387,11 @@ protected:
         Called when the control is deactivated.
     */
     void onDeactivate(bool wasEdited) { }
+
+    /**
+        Called when the control's size is changed
+    */
+    void onSizeChanged(vec2 oldSize, vec2 newSize) { }
 
     /**
         Constructs a new control.

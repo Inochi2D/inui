@@ -13,4 +13,3 @@ public import inrndr.texture;
 public import inrndr.buffer;
 public import inrndr.shader;
 public import inrndr.pass;
-public import inrndr.gl;

@@ -8,6 +8,7 @@
 */
 module inui.widgets.widget;
 import inui.core.utils;
+import inui.window;
 import inui.style;
 import inui.app;
 
@@ -49,6 +50,10 @@ abstract
 class Widget : Responder {
 private:
 
+    // Root window
+    Window root_;
+    Widget parent_;
+
     // ImGui
     uint discriminator;
     string tag_;
@@ -77,8 +82,13 @@ private:
     int pushedVars_;
 
 
-
 protected:
+
+    final
+    void reparentTo(Widget newParent) {
+        this.selem_.parent = newParent.selem_;
+        this.parent_ = newParent;
+    }
 
     /**
         Computed style sheet.
@@ -140,6 +150,15 @@ protected:
         pushedColors_++;
     }
 
+package(inui):
+
+    /**
+        Internal function to set the root window of a widget.
+    */
+    void setWindow(Window window) @system {
+        this.root_ = window;
+    }
+
 public:
 
     /**
@@ -152,6 +171,18 @@ public:
         selem_.attributes["class"] = value;
         this.refresh();
     }
+
+    /**
+        Window that this widget resides within.
+    */
+    final @property Window window() {
+        return parent ? parent_.window : root_;
+    }
+
+    /**
+        The widget above this one, $(D null) if the widget is top-level.
+    */
+    final @property Widget parent() { return parent_; }
 
     /**
         The id of the widget.
@@ -203,6 +234,16 @@ public:
             pushedColors_ = 0;
         }
     }
+
+    /**
+        Adds a widget to the widget, if supported.
+    */
+    Widget add(Widget widget) { return this; }
+    
+    /**
+        Removes a widget from this widget, if supported.
+    */
+    Widget remove(Widget widget) { return this; }
 
     /**
         Tells the responder to refresh all of its information.
@@ -268,24 +309,29 @@ public:
     /**
         Adds a widget to the container.
     */
-    auto add(Widget widget) {
+    override
+    Widget add(Widget widget) {
         if (findWidget(widget) == -1)
             this.children_ ~= widget;
         
         // Set the parent styling element.
-        widget.selem_.parent = this.selem_;
+        widget.reparentTo(this);
         return this;
     }
     
     /**
         Removes a widget to the container.
     */
-    void remove(Widget widget) {
+    override
+    Widget remove(Widget widget) {
         import std.algorithm.mutation : remove;
 
         ptrdiff_t idx = findWidget(widget);
-        if (idx != -1)
+        if (idx != -1) {
             children_ = children_.remove(idx);
+            widget.reparentTo(null);
+        }
+        return this;
     }
 
     /**
@@ -306,6 +352,6 @@ public:
 /**
     Adds a widget to the given container.
 */
-T addWidget(T)(T to, Widget widget) if (is(T : Container)) {
+T addWidget(T)(T to, Widget widget) if (is(T : Widget)) {
     return cast(T)to.add(widget);
 }

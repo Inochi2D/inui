@@ -31,7 +31,7 @@ private:
                 return values[offset].color;
             }
         }
-        return vec4.init;
+        return vec4.zero;
     }
 
     // Resolves a color
@@ -191,7 +191,7 @@ public:
     /**
         Color
     */
-    @property vec4 color() => vtype == StyleValueType.color ? color_ : vec4.init;
+    @property vec4 color() => vtype == StyleValueType.color ? color_ : vec4.zero;
 
     /**
         Number

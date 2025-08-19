@@ -13,6 +13,9 @@ import corefoundation.cfdictionary;
 import corefoundation;
 import bindbc.opengl;
 import metal.types;
+import metal.texture;
+import metal.device;
+import metal.pixelformat;
 import foundation;
 import objc;
 
@@ -154,10 +157,10 @@ extern const __gshared NSString kCVPixelBufferMetalCompatibilityKey;
 
 
 alias CVOpenGLTextureCacheRef = CFTypeRef;
-extern CVReturn CVOpenGLTextureCacheCreate(CVOpenGLTextureCacheRef);
-extern void CVOpenGLTextureCacheRelease(CVOpenGLTextureCacheRef);
-extern CVReturn CVOpenGLTextureCacheCreate(CFAllocatorRef, NSDictionary!(NSString, NSObject), CGLContextObj, CGLPixelFormatObj, CFDictionaryRef, ref CVOpenGLTextureCacheRef);
+extern CVReturn CVOpenGLTextureCacheCreate(CFAllocatorRef, CFDictionaryRef, CGLContextObj, CGLPixelFormatObj, CFDictionaryRef, ref CVOpenGLTextureCacheRef);
 extern CVReturn CVOpenGLTextureCacheCreateTextureFromImage(CFAllocatorRef, CVOpenGLTextureCacheRef, CVPixelBufferRef, CFDictionaryRef, ref CVOpenGLTextureRef);
+extern CVOpenGLTextureCacheRef CVOpenGLTextureCacheRetain(CVOpenGLTextureCacheRef);
+extern void CVOpenGLTextureCacheRelease(CVOpenGLTextureCacheRef);
 extern void CVOpenGLTextureCacheFlush(CVOpenGLTextureCacheRef, ulong);
 
 alias CVOpenGLTextureRef = CFTypeRef;
@@ -167,7 +170,20 @@ extern GLenum CVOpenGLTextureGetTarget(CVOpenGLTextureRef);
 extern GLenum CVOpenGLTextureGetName(CVOpenGLTextureRef);
 extern bool CVOpenGLTextureIsFlipped(CVOpenGLTextureRef);
 
-alias CVPixelBufferRef = CFTypeRef;
+alias CVMetalTextureCacheRef = CFTypeRef;
+extern CVReturn CVMetalTextureCacheCreate(CFAllocatorRef, CFDictionaryRef, MTLDevice, CFDictionaryRef, ref CVMetalTextureCacheRef);
+extern CVReturn CVMetalTextureCacheCreateTextureFromImage(CFAllocatorRef, CVMetalTextureCacheRef, CVImageBufferRef, CFDictionaryRef, MTLPixelFormat, uint, uint, size_t, ref CVMetalTextureRef);
+extern CVMetalTextureCacheRef CVMetalTextureCacheRetain(CVMetalTextureCacheRef);
+extern void CVMetalTextureCacheRelease(CVMetalTextureCacheRef);
+
+alias CVMetalTextureRef = CFTypeRef;
+extern CVMetalTextureRef CVMetalTextureRetain(CVMetalTextureRef);
+extern void CVMetalTextureRelease(CVMetalTextureRef);
+extern MTLTexture CVMetalTextureGetTexture(CVMetalTextureRef);
+extern bool CVMetalTextureIsFlipped(CVMetalTextureRef);
+
+alias CVImageBufferRef = CFTypeRef;
+alias CVPixelBufferRef = CVImageBufferRef;
 extern CVPixelBufferRef CVPixelBufferRetain(CVPixelBufferRef);
 extern void CVPixelBufferRelease(CVPixelBufferRef);
 extern CVReturn CVPixelBufferCreate(CFAllocatorRef, size_t, size_t, OSType, CFDictionaryRef, ref CVPixelBufferRef);
