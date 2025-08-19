@@ -99,9 +99,9 @@ public:
             }
         }
         
-        version(OSX) {
-            result ~= new UIFont("/System/Library/Fonts/SFNS.ttf");
-        }
+        // version(OSX) {
+        //     result ~= new UIFont("/System/Library/Fonts/SFNS.ttf");
+        // }
         return result;
     }
 

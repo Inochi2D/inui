@@ -7,13 +7,14 @@
     Authors: Luna Nielsen
 */
 module inui.core.window;
-import inui.core.render;
 import inui.widgets;
 import inmath;
 import nulib;
 import numem;
 import sdl;
 import sdl.rect;
+
+public import inrndr;
 
 /**
     A system theme
@@ -164,13 +165,13 @@ private:
 @nogc:
     __gshared weak_vector!NativeWindow windows_;
     SDL_Window* handle;
-    GLContext glctx;
+    RenderContext context_;
     bool closeRequested = false;
     SystemVibrancy vibrancy_;
 
     // Base SDL flags to apply.
     version(OSX)
-        enum ulong BASE_FLAGS = SDL_WindowFlags.SDL_WINDOW_OPENGL | SDL_WindowFlags.SDL_WINDOW_HIDDEN | SDL_WindowFlags.SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WindowFlags.SDL_WINDOW_TRANSPARENT;
+        enum ulong BASE_FLAGS = SDL_WindowFlags.SDL_WINDOW_METAL | SDL_WindowFlags.SDL_WINDOW_HIDDEN | SDL_WindowFlags.SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WindowFlags.SDL_WINDOW_TRANSPARENT;
     else 
         enum ulong BASE_FLAGS = SDL_WindowFlags.SDL_WINDOW_OPENGL | SDL_WindowFlags.SDL_WINDOW_HIDDEN | SDL_WindowFlags.SDL_WINDOW_HIGH_PIXEL_DENSITY;
 
@@ -380,9 +381,9 @@ public:
     @property vec2i position() { return SDL_GetWindowPositionExt(handle); }
 
     /**
-        The OpenGL Context associated with the window.
+        The renderer Context associated with the window.
     */
-    @property GLContext gl() { return glctx; }
+    @property RenderContext renderer() { return context_; }
 
     /**
         The area of the NativeWindow that's safe for interactive content.
@@ -462,7 +463,7 @@ public:
     this(SDL_Window* handle) {
         assert(handle, "Failed creating NativeWindow handle");
         this.handle = handle;
-        this.glctx = nogc_new!GLContext(this);
+        this.context_ = RenderContext.createContext(handle);
         this.runOsInitHooks();
     }
 

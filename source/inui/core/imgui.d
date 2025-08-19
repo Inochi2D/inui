@@ -7,11 +7,11 @@
     Authors: Luna Nielsen
 */
 module inui.core.imgui;
-import inui.core.render;
 import inui.core.window;
 import inui.core.fonts;
 import inui.core.utils;
 import inui.image;
+import inrndr;
 import bindbc.opengl;
 import i2d.imgui;
 import nulib.math : isFinite;
@@ -137,101 +137,59 @@ private:
     //      GL State
     //
     nstring g_RenderName;
-    Texture g_FontTexture;
+    CommandBuffer g_Cmds;
+    BufferCache g_VertexBufCache;
+    BufferCache g_IndexBufCache;
+    Buffer g_Uniforms;
     Shader g_Shader;
 
-    // Uniforms location
-    GLint g_AttribLocationTex = 0, g_AttribLocationProjMtx = 0;
-
-    // Vertex attributes location
-    GLuint g_AttribLocationVtxPos = 0, g_AttribLocationVtxUV = 0, g_AttribLocationVtxColor = 0; 
-
-    // Handles
-    GLuint g_VboHandle = 0, g_ElementsHandle = 0;
-
     void createDeviceObjects() {
-        GLint lastTexture, lastArrayBuffer;
-        GLint lastVertexArray;
+        g_Uniforms = window.renderer.createBuffer(mat4.sizeof);
+        g_VertexBufCache = nogc_new!BufferCache(window.renderer);
+        g_IndexBufCache = nogc_new!BufferCache(window.renderer);
 
-        glGetIntegerv(GL_TEXTURE_BINDING_2D, &lastTexture);
-        glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &lastArrayBuffer);
-        glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &lastVertexArray);
-        g_Shader = nogc_new!Shader(
-            window.gl, 
-            import("shaders/ui.vert"), 
-            import("shaders/ui.frag")
-        );
-
-        g_AttribLocationTex = g_Shader.getUniformLocation("Texture");
-        g_AttribLocationProjMtx = g_Shader.getUniformLocation("ProjMtx");
-        g_AttribLocationVtxPos = cast(GLuint) g_Shader.getAttribLocation("Position");
-        g_AttribLocationVtxUV = cast(GLuint) g_Shader.getAttribLocation("UV");
-        g_AttribLocationVtxColor = cast(GLuint) g_Shader.getAttribLocation("Color");
-        glGenBuffers(1, &g_VboHandle);
-        glGenBuffers(1, &g_ElementsHandle);
-
-        glBindTexture(GL_TEXTURE_2D, lastTexture);
-        glBindBuffer(GL_ARRAY_BUFFER, lastArrayBuffer);
-        glBindVertexArray(lastVertexArray);
+        version(OSX)
+            g_Shader = window.renderer.createShader(import("shaders/ui.metal"));
+        else
+            g_Shader = window.renderer.createShader(import("shaders/ui.glsl"));
     }
 
     void destroyDeviceObjects() {
-        if (g_VboHandle) {
-            glDeleteBuffers(1, &g_VboHandle);
-            g_VboHandle = 0;
-        }
-        if (g_ElementsHandle) {
-            glDeleteBuffers(1, &g_ElementsHandle);
-            g_ElementsHandle = 0;
-        }
+        g_VertexBufCache.release();
+        g_IndexBufCache.release();
+        g_Shader.release();
+
+        g_VertexBufCache = null;
+        g_IndexBufCache = null;
+        g_Shader = null;
     }
 
-    void setupRenderState(ImDrawData* drawData, float fbWidth, float fbHeight) {
-        
-        // Setup render state: alpha-blending enabled, no face culling, no depth testing, scissor enabled, polygon fill
-        glEnable(GL_BLEND);
-        glBlendEquation(GL_FUNC_ADD);
-        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-        glDisable(GL_CULL_FACE);
-        glDisable(GL_DEPTH_TEST);
-        glEnable(GL_SCISSOR_TEST);
+    void setupRenderState(ImDrawData* drawData, rect fbArea) {
 
         // Setup viewport, orthographic projection matrix
         // Our visible imgui space lies from draw_data.DisplayPos (top left) to draw_data.DisplayPos+data_data.DisplaySize (bottom right). DisplayPos is (0,0) for single viewport apps.
-        glViewport(0, 0, cast(GLsizei)(fbWidth), cast(GLsizei)(fbHeight));
-        mat4 mvp = mat4.orthographic(
-            drawData.DisplayPos.x,
-            drawData.DisplayPos.x + drawData.DisplaySize.x,
-            drawData.DisplayPos.y + drawData.DisplaySize.y,
-            drawData.DisplayPos.y,
-            -1, 1
-        );
-
-        g_Shader.use();
-        glUniform1i(g_AttribLocationTex, 0);
-        glUniformMatrix4fv(g_AttribLocationProjMtx, 1, GL_TRUE, mvp.ptr);
-        window.gl.bindVAO();
-
-        // Bind vertex/index buffers and setup attributes for ImDrawVert
-        glBindBuffer(GL_ARRAY_BUFFER, g_VboHandle);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_ElementsHandle);
-        glEnableVertexAttribArray(g_AttribLocationVtxPos);
-        glEnableVertexAttribArray(g_AttribLocationVtxUV);
-        glEnableVertexAttribArray(g_AttribLocationVtxColor);
-        glVertexAttribPointer(g_AttribLocationVtxPos, 2, GL_FLOAT, GL_FALSE, ImDrawVert.sizeof, cast(
-                GLvoid*) ImDrawVert.pos.offsetof);
-        glVertexAttribPointer(g_AttribLocationVtxUV, 2, GL_FLOAT, GL_FALSE, ImDrawVert.sizeof, cast(
-                GLvoid*) ImDrawVert.uv.offsetof);
-        glVertexAttribPointer(g_AttribLocationVtxColor, 4, GL_UNSIGNED_BYTE, GL_TRUE, ImDrawVert.sizeof, cast(
-                GLvoid*) ImDrawVert.col.offsetof);
+        g_Cmds.setViewport(fbArea);
+        version(OSX) {
+            g_Uniforms.set([mat4.orthographic01(
+                drawData.DisplayPos.x,
+                drawData.DisplayPos.x + drawData.DisplaySize.x,
+                drawData.DisplayPos.y + drawData.DisplaySize.y,
+                drawData.DisplayPos.y,
+                -1, 1
+            ).transposed()]);
+        } else {
+            g_Uniforms.set([mat4.orthographic(
+                drawData.DisplayPos.x,
+                drawData.DisplayPos.x + drawData.DisplaySize.x,
+                drawData.DisplayPos.y + drawData.DisplaySize.y,
+                drawData.DisplayPos.y,
+                -1, 1
+            )]);
+        }
+        g_Cmds.setUniformBuffer(g_Uniforms, 0);
     }
 
     void render(ImDrawData* drawData) {
-
-        // Make sure fb is appropriately cleared.
-        glViewport(0, 0, cast(int)drawData.DisplaySize.x, cast(int)drawData.DisplaySize.y);
-        glClearColor(0, 0, 0, 0);
-        glClear(GL_COLOR_BUFFER_BIT);
         
         // Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
         float fbWidth = drawData.DisplaySize.x;
@@ -247,47 +205,29 @@ private:
             }
         }
 
-        // Backup GL state
-        GLenum last_active_texture;
-        glGetIntegerv(GL_ACTIVE_TEXTURE, cast(GLint*)&last_active_texture);
-        glActiveTexture(GL_TEXTURE0);
-        GLuint last_program;
-        glGetIntegerv(GL_CURRENT_PROGRAM, cast(GLint*)&last_program);
-        GLuint last_texture;
-        glGetIntegerv(GL_TEXTURE_BINDING_2D, cast(GLint*)&last_texture);
-        GLuint last_array_buffer;
-        glGetIntegerv(GL_ARRAY_BUFFER_BINDING, cast(GLint*)&last_array_buffer);
-        GLuint last_vertex_array_object;
-        glGetIntegerv(GL_VERTEX_ARRAY_BINDING, cast(GLint*)&last_vertex_array_object);
-        GLint[4] last_viewport;
-        glGetIntegerv(GL_VIEWPORT, last_viewport.ptr);
-        GLint[4] last_scissor_box;
-        glGetIntegerv(GL_SCISSOR_BOX, last_scissor_box.ptr);
-        GLenum last_blend_src_rgb;
-        glGetIntegerv(GL_BLEND_SRC_RGB, cast(GLint*)&last_blend_src_rgb);
-        GLenum last_blend_dst_rgb;
-        glGetIntegerv(GL_BLEND_DST_RGB, cast(GLint*)&last_blend_dst_rgb);
-        GLenum last_blend_src_alpha;
-        glGetIntegerv(GL_BLEND_SRC_ALPHA, cast(GLint*)&last_blend_src_alpha);
-        GLenum last_blend_dst_alpha;
-        glGetIntegerv(GL_BLEND_DST_ALPHA, cast(GLint*)&last_blend_dst_alpha);
-        GLenum last_blend_equation_rgb;
-        glGetIntegerv(GL_BLEND_EQUATION_RGB, cast(GLint*)&last_blend_equation_rgb);
-        GLenum last_blend_equation_alpha;
-        glGetIntegerv(GL_BLEND_EQUATION_ALPHA, cast(GLint*)&last_blend_equation_alpha);
-        const(GLboolean) last_enable_blend = glIsEnabled(GL_BLEND);
-        const(GLboolean) last_enable_cull_face = glIsEnabled(GL_CULL_FACE);
-        const(GLboolean) last_enable_depth_test = glIsEnabled(GL_DEPTH_TEST);
-        const(GLboolean) last_enable_scissor_test = glIsEnabled(GL_SCISSOR_TEST);
-
-
-        // Setup desired GL state
-        this.setupRenderState(drawData, fbWidth, fbHeight);
+        vec2i windowSize = window.ptSize;
+        rect fbArea = rect(windowSize.x-fbWidth, windowSize.y-fbHeight, fbWidth, fbHeight);
+        
+        // Setup desired state
+        g_Cmds = window.renderer.beginPass(RenderPassDescriptor(
+            [RenderTargetDescriptor(window.renderer.swapchain.next, true, vec4(0, 0, 0, 0))],
+            VertexDescriptor(
+                attributes: [
+                    VertexAttributeDescriptor(ImDrawVert.pos.offsetof, VertexFormat.float2),
+                    VertexAttributeDescriptor(ImDrawVert.uv.offsetof, VertexFormat.float2),
+                    VertexAttributeDescriptor(ImDrawVert.col.offsetof, VertexFormat.ubyte4),
+                ],
+                rate: 1,
+                stride: ImDrawVert.sizeof
+            ),
+            g_Shader
+        ));
+        this.setupRenderState(drawData, fbArea);
 
         // Will project scissor/clipping rectangles into framebuffer space
         ImVec2 clip_off = ImVec2(
-            drawData.DisplayPos.x,
-            drawData.DisplayPos.y
+            drawData.DisplayPos.x+fbArea.x,
+            drawData.DisplayPos.y+fbArea.y
         ); // (0,0) unless using multi-viewports
 
         ImVec2 clip_scale = ImVec2(
@@ -300,10 +240,10 @@ private:
             const ImDrawList* cmd_list = drawData.CmdLists[n];
 
             // Upload vertex/index buffers
-            glBufferData(GL_ARRAY_BUFFER, cast(GLsizeiptr) cmd_list.VtxBuffer.Size * cast(
-                    int)(ImDrawVert.sizeof), cast(const GLvoid*) cmd_list.VtxBuffer.Data, GL_STREAM_DRAW);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, cast(GLsizeiptr) cmd_list.IdxBuffer.Size * cast(
-                    int)(ImDrawIdx.sizeof), cast(const GLvoid*) cmd_list.IdxBuffer.Data, GL_STREAM_DRAW);
+            Buffer g_VertexBuf = g_VertexBufCache.dequeueBuffer(cast(uint)(cmd_list.VtxBuffer.Size * ImDrawVert.sizeof));
+            Buffer g_IndexBuf = g_IndexBufCache.dequeueBuffer(cast(uint)(cmd_list.IdxBuffer.Size * ImDrawIdx.sizeof));
+            g_VertexBuf.set(cast(void[])cmd_list.VtxBuffer.Data[0..cmd_list.VtxBuffer.Size]);
+            g_IndexBuf.set(cast(void[])cmd_list.IdxBuffer.Data[0..cmd_list.IdxBuffer.Size]);
 
             for (int cmd_i = 0; cmd_i < cmd_list.CmdBuffer.Size; cmd_i++) {
                 const(ImDrawCmd)* pcmd = &cmd_list.CmdBuffer.Data[cmd_i];
@@ -311,89 +251,66 @@ private:
                     // User callback, registered via ImDrawList::AddCallback()
                     // (ImDrawCallback_ResetRenderState is a special callback value used by the user to request the renderer to reset render state.)
                     if (pcmd.UserCallback == cast(ImDrawCallback)(-1))
-                        this.setupRenderState(drawData, fbWidth, fbHeight);
+                        this.setupRenderState(drawData, fbArea);
                     else
                         pcmd.UserCallback(cmd_list, pcmd);
                 } else {
                     // Project scissor/clipping rectangles into framebuffer space
                     ImVec4 clipRect;
-                    clipRect.x = (pcmd.ClipRect.x - clip_off.x) * clip_scale.x;
-                    clipRect.y = (pcmd.ClipRect.y - clip_off.y) * clip_scale.y;
-                    clipRect.z = (pcmd.ClipRect.z - clip_off.x) * clip_scale.x;
-                    clipRect.w = (pcmd.ClipRect.w - clip_off.y) * clip_scale.y;
+                    clipRect.x = (pcmd.ClipRect.x + clip_off.x) * clip_scale.x;
+                    clipRect.y = (pcmd.ClipRect.y + clip_off.y) * clip_scale.y;
+                    clipRect.z = (pcmd.ClipRect.z + clip_off.x) * clip_scale.x;
+                    clipRect.w = (pcmd.ClipRect.w + clip_off.y) * clip_scale.y;
 
                     if (clipRect.x < fbWidth && clipRect.y < fbHeight && clipRect.z >= 0.0f && clipRect.w >= 0.0f) {
                         // Apply scissor/clipping rectangle
-                        glScissor(cast(int) clipRect.x, cast(int)(fbHeight - clipRect.w), cast(int)(
-                                clipRect.z - clipRect.x), cast(int)(clipRect.w - clipRect.y));
+                        g_Cmds.setScissor(rect(
+                            clipRect.x, 
+                            clipRect.y, 
+                            (clipRect.z - clipRect.x), 
+                            (clipRect.w - clipRect.y)
+                        ));
+
+                        // Will not validate in Metal.
+                        if (pcmd.ElemCount == 0)
+                            continue;
 
                         Texture texture = cast(Texture)cast(void*)ImTextureRef_GetTexID(cast(ImTextureRef*)&pcmd.TexRef);
 
                         // Bind texture, Draw
-                        texture.bind(0);
-                        glDrawElementsBaseVertex(
-                            GL_TRIANGLES, 
-                            cast(GLsizei)pcmd.ElemCount, 
-                            ImDrawIdx.sizeof == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT,
-                            cast(void*)(pcmd.IdxOffset * (ImDrawIdx.sizeof)),
-                            cast(GLint)pcmd.VtxOffset
-                        );
+                        g_Cmds.setTexture(texture, 0);
+                        g_Cmds.drawTriangles(g_VertexBuf, g_IndexBuf, ImDrawIdx.sizeof, pcmd.ElemCount, cast(uint)(pcmd.IdxOffset * ImDrawIdx.sizeof), pcmd.VtxOffset);
                     }
                 }
             }
         }
 
-        // Restore modified GL state
-        glUseProgram(last_program);
-        glBindTexture(GL_TEXTURE_2D, last_texture);
-        glActiveTexture(last_active_texture);
-        glBindVertexArray(last_vertex_array_object);
-        glBindBuffer(GL_ARRAY_BUFFER, last_array_buffer);
-        glBlendEquationSeparate(last_blend_equation_rgb, last_blend_equation_alpha);
-        glBlendFuncSeparate(last_blend_src_rgb, last_blend_dst_rgb, last_blend_src_alpha, last_blend_dst_alpha);
-        if (last_enable_blend)
-            glEnable(GL_BLEND);
-        else
-            glDisable(GL_BLEND);
-        if (last_enable_cull_face)
-            glEnable(GL_CULL_FACE);
-        else
-            glDisable(GL_CULL_FACE);
-        if (last_enable_depth_test)
-            glEnable(GL_DEPTH_TEST);
-        else
-            glDisable(GL_DEPTH_TEST);
-        if (last_enable_scissor_test)
-            glEnable(GL_SCISSOR_TEST);
-        else
-            glDisable(GL_SCISSOR_TEST);
-        glViewport(last_viewport[0], last_viewport[1], cast(GLsizei)(last_viewport[2]), cast(GLsizei)(
-                last_viewport[3]));
-        glScissor(last_scissor_box[0], last_scissor_box[1], cast(GLsizei)(last_scissor_box[2]), cast(
-                GLsizei)(last_scissor_box[3]));
+        window.renderer.submit(g_Cmds);
     }
 
     void updateTexture(ImTextureData* texture) {
         if (texture.Status == ImTextureStatus.WantCreate) {
             void[] pixels = (cast(void*)ImTextureData_GetPixels(texture))[0..ImTextureData_GetSizeInBytes(texture)];
-            Texture toUpdate = nogc_new!Texture(window.gl, PixelFormat.rgba32, texture.Width, texture.Height, 1);
+            Texture toUpdate = window.renderer.createTexture(texture.Width, texture.Height, PixelFormat.rgba32Unorm);
             toUpdate.minFilter = TextureFilter.linear;
             toUpdate.magFilter = TextureFilter.linear;
 
-            toUpdate.upload(PixelFormat.rgba32, pixels, texture.Width, texture.Height, 0, 0, 0);
+            toUpdate.updateRegion(pixels, texture.Width, texture.Height, PixelFormat.rgba32Unorm, vec2i(0, 0));
             ImTextureData_SetTexID(texture, cast(ImTextureID)cast(void*)toUpdate);
             ImTextureData_SetStatus(texture, ImTextureStatus.OK);
         } else if (texture.Status == ImTextureStatus.WantUpdates) {
             Texture toUpdate = cast(Texture)(cast(void*)ImTextureData_GetTexID(texture));
             void[] pixels = (cast(void*)ImTextureData_GetPixels(texture))[0..ImTextureData_GetSizeInBytes(texture)];
             foreach(ImTextureRect r; texture.Updates.Data[0..texture.Updates.size]) {
-                toUpdate.upload(PixelFormat.rgba32, pixels, texture.Width, recti(r.x, r.y, r.w, r.h), r.x, r.y);
+                toUpdate.updateRegion(pixels, texture.Width, texture.Height, PixelFormat.rgba32Unorm, recti(r.x, r.y, r.w, r.h), vec2i(r.x, r.y));
             }
+
             ImTextureData_SetStatus(texture, ImTextureStatus.OK);
         } else if (texture.Status == ImTextureStatus.WantDestroy && texture.UnusedFrames > 0) {
+
             Texture toUpdate = cast(Texture)(cast(void*)ImTextureData_GetTexID(texture));
-            
-            nogc_delete(toUpdate);
+            toUpdate.release();
+
             ImTextureData_SetTexID(texture, 0);
             ImTextureData_SetStatus(texture, ImTextureStatus.Destroyed);
         }
@@ -403,7 +320,7 @@ private:
         import std.format : format;
 
         // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
-        g_RenderName = "OpenGL %s.%s".format(window.gl.majorVersion, window.gl.minorVersion);
+        g_RenderName = "InRender";
         io.BackendFlags |= cast(int) ImGuiBackendFlags.RendererHasVtxOffset;
         io.BackendFlags |= cast(int) ImGuiBackendFlags.RendererHasTextures;
         io.BackendRendererName = g_RenderName.ptr;
@@ -826,6 +743,7 @@ public:
         Starts rendering a new frame.
     */
     void beginFrame(float deltaTime) {
+        window.renderer.beginFrame();
         this.updateSystemColors();
         this.platformNewFrame(io, deltaTime);
         igNewFrame();
@@ -848,13 +766,14 @@ public:
         //     io.WantSaveIniSettings = false;
         // }
         initialized = true;
+        window.renderer.endFrame();
     }
 
     /**
         Makes this ImGui Context current.
     */
     void makeCurrent() {
-        window.gl.makeCurrent();
+        window.renderer.makeCurrent();
         igSetCurrentContext(ctx);
     }
 
