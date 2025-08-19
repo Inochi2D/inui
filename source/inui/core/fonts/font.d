@@ -81,7 +81,12 @@ public:
     static UIFont[] createFontList() {
         import std.uni : toLower;
         import std.stdio : writeln;
+
         UIFont[] result;
+        version(OSX) {
+            result ~= new UIFont("/System/Library/Fonts/SFNS.ttf");
+        }
+
         auto fontlist = ha.FontCollection.createFromSystem();
         foreach(ha.FontFamily family; fontlist.families) {
             foreach(ref ha.FontFaceInfo info; family.faces) {
@@ -98,10 +103,6 @@ public:
                 result ~= new UIFont(info);
             }
         }
-        
-        // version(OSX) {
-        //     result ~= new UIFont("/System/Library/Fonts/SFNS.ttf");
-        // }
         return result;
     }
 
