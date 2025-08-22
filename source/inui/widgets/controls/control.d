@@ -6,7 +6,7 @@
     
     Authors: Luna Nielsen
 */
-module inui.widgets.control;
+module inui.widgets.controls.control;
 import inui.widgets.widget;
 import inui.core.utils;
 import inmath.linalg;
@@ -133,22 +133,12 @@ public:
 }
 
 /**
-    Mouse buttons.
-*/
-enum MouseButton {
-    left,
-    middle,
-    right
-}
-
-/**
-    An interactive control.
+    An interactive, retained control with styling.
 */
 abstract
 class Control : Widget {
 private:
     bool active_;
-    bool focused_;
 
     vec2 lastSize = vec2(0, 0);
     bool allowsOverlap_;
@@ -157,11 +147,11 @@ private:
             case "hover":
                 return this.isHovered;
 
+            case "focused":
+                return this.isFocused;
+
             case "active":
                 return active_;
-
-            case "focused":
-                return focused_;
             
             default:
                 return false;
@@ -262,16 +252,8 @@ protected:
             );
 
             this.isHovered = igIsItemHovered();
+            this.isFocused = igIsItemFocused();
             active_ = igIsItemActive();
-            focused_ = igIsItemFocused();
-
-            // Handle mouse clicks.
-            if (igIsItemClicked(ImGuiMouseButton.Left))
-                this.onClicked(MouseButton.left);
-            if (igIsItemClicked(ImGuiMouseButton.Middle))
-                this.onClicked(MouseButton.middle);
-            if (igIsItemClicked(ImGuiMouseButton.Right))
-                this.onClicked(MouseButton.right);
             
             if (igIsItemEdited()) {
                 this.onEdited();
@@ -289,6 +271,7 @@ protected:
             }
         
         this.onDrawLate(DrawContext(igGetForegroundDrawList()), delta);
+        super.onUpdate(delta);
     }
 
     /**
@@ -349,21 +332,6 @@ protected:
     void onDrawLate(DrawContext ctx, float delta) { }
 
     /**
-        Called when the control has begun to be hovered.
-    */
-    void onHoverEnter() { }
-
-    /**
-        Called when the control is no longer hovered.
-    */
-    void onHoverLeave() { }
-
-    /**
-        Called when the control is clicked.
-    */
-    void onClicked(MouseButton button) { }
-
-    /**
         Called when the control is edited.
     */
     void onEdited() { }
@@ -417,9 +385,4 @@ public:
         Whether the control is active.
     */
     @property bool isActive() => active_;
-
-    /**
-        Whether the control is in focus.
-    */
-    @property bool isFocused() => focused_;
 }

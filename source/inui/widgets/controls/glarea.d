@@ -6,8 +6,8 @@
     
     Authors: Luna Nielsen
 */
-module inui.widgets.views.glview;
-import inui.widgets.control;
+module inui.widgets.controls.glarea;
+import inui.widgets.controls.control;
 import inui.core.utils;
 import inmath.linalg;
 import inmath : max;
@@ -19,7 +19,7 @@ public import bindbc.opengl;
 /**
     An OpenGL View that can be drawn to by an OpenGL 4 context.
 */
-class GLView : Control {
+class GLArea : Control {
 private:
     SubRenderContext gl;
 

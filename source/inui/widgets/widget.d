@@ -24,15 +24,6 @@ import std.format : format;
 alias StyleElementId = ImGuiCol;
 
 /**
-    Mouse buttons
-*/
-enum MouseButton : ImGuiMouseButton {
-    left = ImGuiMouseButton.Left,
-    middle = ImGuiMouseButton.Middle,
-    right = ImGuiMouseButton.Right
-}
-
-/**
     Base class for widgets.
 */
 abstract
@@ -73,7 +64,9 @@ private:
 
     bool wasHovered_;
     bool isHovered_;
-    bool[3] dragState_;
+    bool isFocused_;
+    bool wasFocused_;
+    bool[3] dragState;
 
 protected:
 
@@ -94,6 +87,14 @@ protected:
     final @property void isHovered(bool value) {
         this.wasHovered_ = isHovered_;
         this.isHovered_ = value;
+    }
+
+    /**
+        Whether the widget is in a focused state.
+    */
+    final @property void isFocused(bool value) {
+        this.wasFocused_ = isFocused_;
+        this.isFocused_ = value;
     }
 
     /**
@@ -155,34 +156,41 @@ protected:
             else this.onMouseLeave();
         }
 
+        if (isHovered_)
+            this.onHovered();
+
         foreach(btn; MouseButton.min..MouseButton.max) {
+            bool isDown = window.mouse.isMouseDown(btn);
+            bool isDragging = window.mouse.isDragging(btn);
+            bool wasDragging = window.mouse.wasDragging(btn);
+
             if (isHovered_) {
-                if (isHovered_ && igIsMouseClicked(btn))
+                if (isHovered_ && window.mouse.isMouseClicked(btn))
                     this.onClicked(btn);
 
-                if (isHovered_ && igIsMouseDoubleClicked(btn))
+                if (isHovered_ && window.mouse.isMouseDoubleClicked(btn))
                     this.onDoubleClicked(btn);
-                
-                if (!dragState_[btn]) {
-                    if (isHovered_ && igIsMouseDragging(btn)) {
-                        dragState_[btn] = true;
-                        this.onDragBegin(btn);
-                    }
-                }
-            }
-
-            if (dragState_[btn]) {
-                if (igIsMouseReleased(btn)) {
-                    this.onDragEnd(btn);
-                    dragState_[btn] = 0;
-                } else {
-                    ImVec2 mdelta;
-                    igGetMouseDragDelta(&mdelta, btn);
-                    this.onDragged(btn, vec2(mdelta.x, mdelta.y));
-                }
             }
             
-        }   
+            final switch (dragState[btn]) {
+            case false:
+                if (wasDragging != isDragging && isHovered && isDown) {
+                    this.onDragBegin(btn);
+                    dragState[btn] = 1;
+                }
+                break;
+            
+            case true:
+                if (!window.mouse.isMouseDown(btn)) {
+                    this.onDragEnd(btn);
+                    dragState[btn] = 0;
+                    break;
+                }
+
+                this.onDragged(btn, window.mouse.dragDeltaFor(btn));
+                break;
+            }
+        }
     }
 
     /**
@@ -252,6 +260,11 @@ protected:
     void onMouseEnter() { }
 
     /**
+        Called while the mouse is hovering the widget.
+    */
+    void onHovered() { }
+
+    /**
         Called when the mouse has left the bounds of the widget.
     */
     void onMouseLeave() { }
@@ -316,6 +329,17 @@ public:
         frame.
     */
     final @property bool wasHovered() => wasHovered_;
+
+    /**
+        Whether the widget is in a hovered state.
+    */
+    final @property bool isFocused() => isFocused_;
+
+    /**
+        Whether the widget was in a hovered state the last
+        frame.
+    */
+    final @property bool wasFocused() => wasFocused_;
 
     /**
         The id of the widget.

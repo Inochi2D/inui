@@ -18,6 +18,7 @@ import sdl.timer;
 
 // Re-exported symbols
 public import inui.core.window : SystemTheme, SystemVibrancy;
+public import inui.input;
 import inui.app;
 
 /**
@@ -51,6 +52,9 @@ private:
         deltaTime_ = abs(cast(float)(currTime_-prevTime_)*0.001f);
     }
 
+    // Window state
+    MouseState mouseState_;
+
 public:
 
     /**
@@ -73,6 +77,11 @@ public:
     @property void focused(Widget widget) {
         focusedWidget_ = widget;
     }
+
+    /**
+        This window's mouse state.
+    */
+    @property MouseState mouse() { return mouseState_; }
 
     /**
         All currently active windows.
@@ -228,6 +237,7 @@ public:
     */
     ~this() {
         nogc_delete(backing);
+        nogc_delete(mouseState_);
 
         // Delete self from window list.
         ptrdiff_t idx = getIndex();
@@ -243,6 +253,10 @@ public:
         this.backing = nogc_new!NativeWindow(title, vec2i(width, height), flags);
         this.context = new IGContext(backing);
         this.view = new RootView();
+
+        // Setup state handling.
+        this.mouseState_ = nogc_new!MouseState();
+
         __active_windows ~= this;
         SDL_SetEventFilter(cast(eventfilter_func_t)&__Inui_Window_EventFilter, cast(void*)this);
     }
@@ -269,6 +283,7 @@ public:
             return;
         
         context.makeCurrent();
+        mouseState_.update();
         backing.update();
 
         context.beginFrame(deltaTime);

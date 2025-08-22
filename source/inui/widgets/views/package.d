@@ -9,4 +9,3 @@
 module inui.widgets.views;
 
 public import inui.widgets.views.view;
-public import inui.widgets.views.glview;

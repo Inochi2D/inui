@@ -6,8 +6,8 @@
     
     Authors: Luna Nielsen
 */
-module inui.widgets.button;
-import inui.widgets.control;
+module inui.widgets.controls.button;
+import inui.widgets.controls.control;
 import inui.core.utils;
 import inmath.linalg;
 import inmath : max;

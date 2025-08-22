@@ -10,8 +10,5 @@ module inui.widgets;
 
 public import inui.widgets.widget;
 public import inui.widgets.views;
-public import inui.widgets.control;
-public import inui.widgets.textbox;
-public import inui.widgets.button;
-public import inui.widgets.panel;
+public import inui.widgets.controls;
 public import inui.style.box;

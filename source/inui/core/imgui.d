@@ -20,6 +20,7 @@ import numem;
 import nulib;
 import sdl;
 import sdl.misc : SDL_OpenURL;
+import sdl.error : SDL_GetError;
 
 import std.stdio : printf;
 
@@ -60,6 +61,11 @@ private:
             io.DisplaySize = ImVec2(windowSize.x, windowSize.y);
         }
         io.DeltaTime = deltaTime;
+
+        if (cursors[igGetMouseCursor()] !is lastCursor) {
+            lastCursor = cursors[igGetMouseCursor()];
+            SDL_SetCursor(lastCursor);
+        }
     }
 
     void setImeData(ImGuiPlatformImeData* data) {
@@ -75,13 +81,6 @@ private:
                 cast(int)data.InputLineHeight
             );
             window.startTextInput();
-        }
-    }
-
-    void updateCursor() {
-        if (cursors[igGetMouseCursor()] !is lastCursor) {
-            lastCursor = cursors[igGetMouseCursor()];
-            SDL_SetCursor(lastCursor);
         }
     }
 
@@ -755,7 +754,6 @@ public:
     void endFrame() {
         igRender();
         this.render(igGetDrawData());
-        this.updateCursor();
 
         // if (io.WantSaveIniSettings) {
         //     import inui.app : Application;

@@ -6,8 +6,8 @@
     
     Authors: Luna Nielsen
 */
-module inui.widgets.textbox;
-import inui.widgets.control;
+module inui.widgets.controls.textbox;
+import inui.widgets.controls.control;
 import nulib.string;
 import i2d.imgui;
 import inmath.linalg;

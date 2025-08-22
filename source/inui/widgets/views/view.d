@@ -28,11 +28,6 @@ protected:
 public:
 
     /**
-        Whether the view is in focus.
-    */
-    abstract @property bool isFocused();
-
-    /**
         Whether the view is "open" and being rendered.
     */
     abstract @property bool isOpen();
@@ -51,25 +46,6 @@ public:
     Depending on the views inserted into the view its semantics changes.
 */
 class RootView : View {
-private:
-    bool focused_;
-
-    bool onPsuedo(string name, string arg) {
-        switch(name) {
-            case "hover":
-                return this.isHovered;
-
-            case "open":
-                return true;
-
-            case "focused":
-                return focused_;
-            
-            default:
-                return false;
-        }
-    }
-
 protected:
 
     /**
@@ -92,7 +68,7 @@ protected:
             igSetNextWindowDockID(did);
             igBegin(imName.ptr, null, ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoSavedSettings);
                 this.isHovered = igIsWindowHovered();
-                focused_ = igIsWindowFocused();
+                this.isFocused = igIsWindowFocused();
                 Widget.onUpdate(delta);
             igEnd();
         }
@@ -104,11 +80,6 @@ protected:
     }
 
 public:
-
-    /**
-        Whether the view is in focus.
-    */
-    override @property bool isFocused() => focused_;
 
     /**
         Whether the view is "open" and being rendered.
