@@ -6,7 +6,7 @@
     
     Authors: Luna Nielsen
 */
-module inui.widgets.glview;
+module inui.widgets.views.glview;
 import inui.widgets.control;
 import inui.core.utils;
 import inmath.linalg;

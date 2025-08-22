@@ -9,6 +9,7 @@
 module inui.widgets;
 
 public import inui.widgets.widget;
+public import inui.widgets.views;
 public import inui.widgets.control;
 public import inui.widgets.textbox;
 public import inui.widgets.button;

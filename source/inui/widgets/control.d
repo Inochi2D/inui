@@ -147,8 +147,6 @@ enum MouseButton {
 abstract
 class Control : Widget {
 private:
-    bool prevHovered_;
-    bool hovered_;
     bool active_;
     bool focused_;
 
@@ -157,7 +155,7 @@ private:
     bool onPsuedo(string name, string arg) {
         switch(name) {
             case "hover":
-                return hovered_;
+                return this.isHovered;
 
             case "active":
                 return active_;
@@ -198,7 +196,6 @@ protected:
     */
     override void onUpdate(float delta) {
         this.onDrawEarly(DrawContext(igGetBackgroundDrawList()), delta);
-
             if (allowsOverlap) igSetNextItemAllowOverlap();
 
 
@@ -264,8 +261,7 @@ protected:
                 computedArea.bottom
             );
 
-            prevHovered_ = hovered_;
-            hovered_ = igIsItemHovered();
+            this.isHovered = igIsItemHovered();
             active_ = igIsItemActive();
             focused_ = igIsItemFocused();
 
@@ -285,12 +281,6 @@ protected:
             if (igIsItemActivated()) {
                 this.onActivate();
                 this.refresh(); 
-            }
-
-            if (prevHovered_ != hovered_) {
-                if (hovered_) this.onHoverEnter();
-                else this.onHoverLeave();
-                this.refresh();
             }
 
             if (igIsItemDeactivated()) {
@@ -422,11 +412,6 @@ public:
         Alignment of the control.
     */
     @property Alignment alignment() => cssbox.alignSelf;
-
-    /**
-        Whether the control is being hovered over.
-    */
-    @property bool isHovered() => hovered_;
 
     /**
         Whether the control is active.

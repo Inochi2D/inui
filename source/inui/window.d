@@ -27,7 +27,8 @@ class Window {
 private:
     NativeWindow backing;
     IGContext context;
-    Widget widget_;
+    View rootView_;
+    Widget focusedWidget_;
     long prevTime_;
     long currTime_;
     float deltaTime_;
@@ -53,18 +54,25 @@ private:
 public:
 
     /**
-        The root level widget of the window.
+        The root level view widget of the window.
     */
-    @property Widget widget() => widget_;
-    @property auto widget(Widget value) {
-        if (this.widget_)
-            this.widget_.setWindow(null);
+    @property View view() => rootView_;
+    @property auto view(View value) {
+        if (this.rootView_)
+            this.rootView_.setWindow(null);
 
-        this.widget_ = value;
-        this.widget_.setWindow(this);
+        this.rootView_ = value;
+        this.rootView_.setWindow(this);
         return this;
     }
 
+    /**
+        The currently set focused widget.
+    */
+    @property Widget focused() => focusedWidget_;
+    @property void focused(Widget widget) {
+        focusedWidget_ = widget;
+    }
 
     /**
         All currently active windows.
@@ -234,6 +242,7 @@ public:
     this(string title, int width, int height, ulong flags = 0) {
         this.backing = nogc_new!NativeWindow(title, vec2i(width, height), flags);
         this.context = new IGContext(backing);
+        this.view = new RootView();
         __active_windows ~= this;
         SDL_SetEventFilter(cast(eventfilter_func_t)&__Inui_Window_EventFilter, cast(void*)this);
     }
@@ -263,7 +272,7 @@ public:
         backing.update();
 
         context.beginFrame(deltaTime);
-            widget.update(deltaTime);
+            view.update(deltaTime);
         context.endFrame();
         this.swap();
     }
@@ -272,8 +281,8 @@ public:
         Refreshes the window
     */
     void refresh() {
-        if (widget)
-            widget.refresh();
+        if (view)
+            view.refresh();
     }
 
     /**
