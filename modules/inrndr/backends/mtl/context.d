@@ -40,29 +40,9 @@ public:
     }
 
     override
-    @property string[] validSubContextTypes() => __supported_sub_ctx;
-
-    /**
-        Creates an embedded GL context which can be rendered by the render context.
-
-        Params:
-            type = The type of sub context to create.
-        
-        Returns:
-            A new sub context if possible,
-            $(D null) otherwise.
-    */
-    override
-    SubRenderContext createSubContext(uint width, uint height, string type) {
-        switch(type) {
-            case "opengl":
-                return nogc_new!GLSubContext(this, width, height);
-            
-            default:
-                return null;
-        }
+    SubRenderContext createGLSubContext(uint width, uint height) {
+        return nogc_new!GLSubContext(this, width, height);
     }
-
 
     /// Destructor
     ~this() {
@@ -151,50 +131,50 @@ public:
 
 public import bindbc.opengl;
 import nulib.collections.stack;
+import mtl.texture : MetalTexture;
 
 class GLSubContext : SubRenderContext {
 private:
 @nogc:
-    MTLDevice device;
     CGLContext ctx;
-    Texture ctxTexture;
+    MetalTexture ctxTexture;
 
     uint width_, height_;
 
 public:
 
     ~this() {
-        this.ctx.release();
+        nogc_delete(ctx);
     }
 
     // Constructor
     this(MetalRenderContext rctx, uint width, uint height) {
-        this.device = rctx.device;
-        this.resize(width, height);
+
+        import mtl.texture : MetalTexture;
+        this.ctx = nogc_new!CGLContext(rctx.device, width, height);
+        this.ctxTexture = nogc_new!MetalTexture(ctx.mtlTexture);
         super(rctx);
     }
 
     override @property uint fbWidth() => this.width_;
     override @property uint fbHeight() => this.height_;
+
+    override @property void* viewFramebuffer() => cast(void*)ctx.fbo;
     override @property Texture hostFramebuffer() => ctxTexture;
-    override @property void* viewFramebuffer() => cast(void*)ctx.glTexture;
 
     override
     void resize(uint width, uint height) {
         this.width_ = width;
         this.height_ = height;
-        if (ctx) {
-            ctx.release();
-            ctxTexture.release();
-        }
 
-        this.ctx = nogc_new!CGLContext(device, width, height);
-        this.ctxTexture = nogc_new!MetalTexture(ctx.mtlTexture);
+        this.ctx.resize(width, height);
+        this.ctxTexture.rebind(ctx.mtlTexture);
     }
 
     override
     void beginFrame() {
         ctx.makeCurrent();
+        glBindFramebuffer(GL_FRAMEBUFFER, ctx.fbo);
     }
 
     override
@@ -220,91 +200,91 @@ RenderContext __inui_create_render_context_for(SDL_Window* window) @nogc {
 }
 
 final
-class CGLContext : NuRefCounted {
+class CGLContext : NuObject {
 private:
 @nogc:
-    static
-    struct AAPLTextureFormatInfo {
-        int                 cvPixelFormat;
-        MTLPixelFormat      mtlFormat;
-        GLuint              glInternalFormat;
-        GLuint              glFormat;
-        GLuint              glType;
-    }
+    MTLDevice mtlDevice;
+    CGLPixelFormatObj glFormat;
+    CGLContextObj glContext;
 
-    static const CGLPixelFormatAttribute[4] __attribs = [
-        kCGLPFAAccelerated,
-        kCGLPFAOpenGLProfile,
-        kCGLOGLPVersion_GL4_Core,
-        0
-    ];
-
-    static const AAPLTextureFormatInfo __gl_mtl_format = {
-        // Core Video Pixel Format,             Metal Pixel Format,             GL internalformat, GL format,   GL type
-        CVPixelFormatType.k32BGRA,              MTLPixelFormat.BGRA8Unorm,      GL_RGBA,           GL_BGRA,     GL_UNSIGNED_INT_8_8_8_8_REV
-    };
-
-    MTLDevice mtlDevice_;
-    CVMetalTextureCacheRef mtlTextureCache_;
-    CVMetalTextureRef mtlTexture_;
-
-    CGLPixelFormatObj glFormat_;
-    CGLContextObj glContext_;
-    CVOpenGLTextureCacheRef glTextureCache_;
-    CVOpenGLTextureRef glTexture_;
-    
-    uint width_, height_;
-    CVPixelBufferRef pixbuf_;
+    GLSharedTexture sharedTexture;
     GLuint fbo_;
 
     // Helper that sets up the OpenGL state
-    void create(uint width, uint height) {
-        this.width_ = width;
-        this.height_ = height;
+    void create(MTLDevice device, uint width, uint height) {
+        this.mtlDevice = device;
         int npix;
 
         // Create GL Context
-        enforce(CGLChoosePixelFormat(__attribs.ptr, glFormat_, npix) == kCGLNoError, "Could not create a pixel format for an OpenGL 4.1 Core context!");
-        enforce(CGLCreateContext(glFormat_, null, glContext_) == kCGLNoError, "Could not create an OpenGL 4.1 Core context!");
+        enforce(CGLChoosePixelFormat(__attribs.ptr, glFormat, npix) == kCGLNoError, "Could not create a pixel format for an OpenGL 4.1 Core context!");
+        enforce(CGLCreateContext(glFormat, null, glContext) == kCGLNoError, "Could not create an OpenGL 4.1 Core context!");
 
-        // Create the pixel buffer
-        enforce(
-            CVPixelBufferCreate(null, width, height, __gl_mtl_format.cvPixelFormat, getCVBufferProperties(), pixbuf_) == kCVReturnSuccess, 
-            "Failed to create pixel buffer."
-        );
-
-        // Create Texture Cache
-        enforce(
-            CVOpenGLTextureCacheCreate(null, null, glContext_, glFormat_, null, glTextureCache_) == kCVReturnSuccess, 
-            "Failed to create OpenGL Texture Cache"
-        );
-
-        // Create Color Image
-        enforce(
-            CVOpenGLTextureCacheCreateTextureFromImage(null, glTextureCache_, pixbuf_, null, glTexture_) == kCVReturnSuccess,
-            "Failed to create framebuffer texture!"
-        );
-        
-        enforce(
-            CVMetalTextureCacheCreate(null, null, mtlDevice_, null, mtlTextureCache_) == kCVReturnSuccess,
-            "Failed to create Metal Texture Cache!"
-        );
-        
-        enforce(
-            CVMetalTextureCacheCreateTextureFromImage(null, mtlTextureCache_, pixbuf_, null, __gl_mtl_format.mtlFormat, width, height, 0, mtlTexture_) == kCVReturnSuccess,
-            "Failed to create Metal Texture!"
-        );
-
-        CGLLockContext(glContext_);
-        CGLSetCurrentContext(glContext_);
-        CGLUnlockContext(glContext_);
+        CGLLockContext(glContext);
+        CGLSetCurrentContext(glContext);
+        CGLUnlockContext(glContext);
         if (!isOpenGLLoaded) 
             loadOpenGL();
 
+
         glGenFramebuffers(1, &fbo_);
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, CVOpenGLTextureGetName(glTexture_), 0);
+        this.resize(width, height);
     }
+
+public:
+    @property GLuint fbo() => fbo_;
+    @property GLuint glTexture() => sharedTexture.glTexture;
+    @property MTLTexture mtlTexture() => sharedTexture.mtlTexture;
+
+    // Destructor
+    ~this() {
+        CGLReleaseContext(glContext);
+        CGLReleasePixelFormat(glFormat);
+    }
+    
+    // Constructor
+    this(MTLDevice device, uint width, uint height) {
+        this.create(device, width, height);
+    }
+
+    void resize(uint width, uint height) {
+        if (sharedTexture)
+            nogc_delete(sharedTexture);
+        
+        sharedTexture = nogc_new!GLSharedTexture(mtlDevice, glContext, glFormat, width, height);
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, sharedTexture.glTexture, 0);
+    }
+
+    void makeCurrent() {
+        CGLLockContext(glContext);
+        CGLSetCurrentContext(glContext);
+        CGLUnlockContext(glContext);
+    }
+
+    void flush() {
+        glFlush();
+    }
+}
+
+/**
+    Shared metal-opengl texture.
+*/
+final
+class GLSharedTexture : NuObject {
+private:
+@nogc:
+    MetalRenderContext metal;
+    CGLContext gl;
+
+    uint width_, height_;
+    CVPixelBufferRef pixbuf_;
+
+    CVMetalTextureCacheRef mtlTextureCache_;
+    CVMetalTextureRef mtlTexture_;
+
+    CVOpenGLTextureCacheRef glTextureCache_;
+    CVOpenGLTextureRef glTexture_;
+    
 
     // Helper which creates a single reused CFDictionary for the
     // CV buffer properties.
@@ -321,36 +301,69 @@ private:
 
 public:
 
-    // Destructor
     ~this() {
         CVOpenGLTextureRelease(glTexture_);
         CVOpenGLTextureCacheRelease(glTextureCache_);
         CVPixelBufferRelease(pixbuf_);
-
-        CGLReleaseContext(glContext_);
-        CGLReleasePixelFormat(glFormat_);
     }
 
-    @property GLenum glTexture() => CVOpenGLTextureGetName(glTexture_);
+    @property GLuint glTexture() => CVOpenGLTextureGetName(glTexture_);
     @property MTLTexture mtlTexture() => CVMetalTextureGetTexture(mtlTexture_);
-    
-    // Constructor
-    this(MTLDevice device, uint width, uint height) {
-        this.mtlDevice_ = device;
-        this.create(width, height);
-    }
 
-    void makeCurrent() {
-        CGLLockContext(glContext_);
-        CGLSetCurrentContext(glContext_);
-        CGLUnlockContext(glContext_);
+    /**
+        Creates a new shared GL-Metal Texture
+    */
+    this(MTLDevice metalDevice, CGLContextObj cglContext, CGLPixelFormatObj cglPixelFormat, uint width, uint height) {
+        this.width_ = width;
+        this.height_ = height;
+
+        // Create the pixel buffer
+        enforce(
+            CVPixelBufferCreate(null, width, height, __gl_mtl_format.cvPixelFormat, getCVBufferProperties(), pixbuf_) == kCVReturnSuccess, 
+            "Failed to create pixel buffer."
+        );
+
+        // Create Texture Cache
+        enforce(
+            CVOpenGLTextureCacheCreate(null, null, cglContext, cglPixelFormat, null, glTextureCache_) == kCVReturnSuccess, 
+            "Failed to create OpenGL Texture Cache"
+        );
+
+        // Create Color Image
+        enforce(
+            CVOpenGLTextureCacheCreateTextureFromImage(null, glTextureCache_, pixbuf_, null, glTexture_) == kCVReturnSuccess,
+            "Failed to create framebuffer texture!"
+        );
         
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
+        enforce(
+            CVMetalTextureCacheCreate(null, null, metalDevice, null, mtlTextureCache_) == kCVReturnSuccess,
+            "Failed to create Metal Texture Cache!"
+        );
+        
+        enforce(
+            CVMetalTextureCacheCreateTextureFromImage(null, mtlTextureCache_, pixbuf_, null, __gl_mtl_format.mtlFormat, width, height, 0, mtlTexture_) == kCVReturnSuccess,
+            "Failed to create Metal Texture!"
+        );
     }
 
-    void flush() {
-        glFlush();
-    }
 }
 
-__gshared string[] __supported_sub_ctx = ["opengl"];
+struct AAPLTextureFormatInfo {
+    int                 cvPixelFormat;
+    MTLPixelFormat      mtlFormat;
+    GLuint              glInternalFormat;
+    GLuint              glFormat;
+    GLuint              glType;
+}
+
+static const CGLPixelFormatAttribute[4] __attribs = [
+    kCGLPFAAccelerated,
+    kCGLPFAOpenGLProfile,
+    kCGLOGLPVersion_GL4_Core,
+    0
+];
+
+static const AAPLTextureFormatInfo __gl_mtl_format = {
+    // Core Video Pixel Format,             Metal Pixel Format,             GL internalformat, GL format,   GL type
+    CVPixelFormatType.k32BGRA,              MTLPixelFormat.BGRA8Unorm,      GL_RGBA,           GL_BGRA,     GL_UNSIGNED_INT_8_8_8_8_REV
+};

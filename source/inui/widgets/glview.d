@@ -26,9 +26,19 @@ private:
 protected:
 
     /**
+        Gets the main view framebuffer.
+    */
+    @property GLuint mainFBO() => cast(GLuint)gl.viewFramebuffer();
+
+    /**
         Called when OpenGL is in control of drawing.
     */
     abstract void onDrawGL(float delta);
+
+    /**
+        Called when OpenGL is first initialized.
+    */
+    abstract void onGLInit();
 
     override
     void onDraw(DrawContext ctx, float delta) {
@@ -38,7 +48,12 @@ protected:
         gl.beginFrame();
             this.onDrawGL(delta);
         gl.endFrame();
-        igImage(ImTextureRef(null, cast(ImTextureID)cast(void*)gl.hostFramebuffer), cssbox.requestedSize.toImGui!ImVec2);
+        igImage(
+            ImTextureRef(null, cast(ImTextureID)cast(void*)gl.hostFramebuffer), 
+            cssbox.requestedSize.toImGui!ImVec2,
+            ImVec2(1, 1),
+            ImVec2(0, 0)
+        );
     }
 
     override
@@ -52,7 +67,10 @@ protected:
         }
 
         if (!gl) {
-            this.gl = window.renderer.createSubContext(cast(uint)newSize.x, cast(uint)newSize.y, "opengl");
+            this.gl = window.renderer.createGLSubContext(cast(uint)newSize.x, cast(uint)newSize.y);
+            this.gl.beginFrame();
+                this.onGLInit();
+            this.gl.endFrame();
             return;
         }
 

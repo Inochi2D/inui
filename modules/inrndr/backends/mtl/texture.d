@@ -251,6 +251,13 @@ public:
             width*stride
         );
     }
+
+    void rebind(MTLTexture texture) {
+        this.width_ = cast(uint)texture.width;
+        this.height_ = cast(uint)texture.height;
+        this.format_ = texture.pixelFormat.fromMTLPixelFormat();
+        this.texture_ = texture;
+    }
 }
 
 class MetalSwapChain : SwapChain {

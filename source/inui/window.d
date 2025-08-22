@@ -235,7 +235,7 @@ public:
         this.backing = nogc_new!NativeWindow(title, vec2i(width, height), flags);
         this.context = new IGContext(backing);
         __active_windows ~= this;
-        SDL_SetEventFilter(&__Inui_Window_EventFilter, cast(void*)this);
+        SDL_SetEventFilter(cast(eventfilter_func_t)&__Inui_Window_EventFilter, cast(void*)this);
     }
 
     /**
@@ -373,9 +373,11 @@ public:
 //
 private:
 
+alias eventfilter_func_t = extern(C) bool function(void* userdata, SDL_Event* event) @nogc nothrow;
+
 extern(C)
-bool __Inui_Window_EventFilter(void* userdata, SDL_Event* event) @nogc nothrow {
-    return assumeNoThrowNoGC((void* userdata, SDL_Event* event) {
+bool __Inui_Window_EventFilter(void* userdata, SDL_Event* event) @nogc {
+    return assumeNoGC((void* userdata, SDL_Event* event) {
         if (event.window.windowID == (cast(Window)userdata).backingWindow.id) {
             switch(event.type) {
                 case SDL_EventType.SDL_EVENT_WINDOW_EXPOSED:

@@ -43,12 +43,6 @@ public:
     }
 
     /**
-        The valid forms of subcontext that can be created for this
-        render context.
-    */
-    abstract @property string[] validSubContextTypes();
-
-    /**
         Creates an embedded GL context which can be rendered by the render context.
 
         Params:
@@ -58,7 +52,7 @@ public:
             A new sub context if possible,
             $(D null) otherwise.
     */
-    abstract SubRenderContext createSubContext(uint width, uint height, string type="opengl");
+    abstract SubRenderContext createGLSubContext(uint width, uint height);
 
     /**
         Creates a new texture for the context.

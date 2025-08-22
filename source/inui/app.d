@@ -308,12 +308,15 @@ public:
             }
 
             this.handlers.length = 0;
-            return 0;
         } catch(Exception ex) {
-            import inui.core.msgbox : MessageBox, MessageType;
-            MessageBox.show(MessageType.error, "Uncaught Exception", ex.msg);
-            return -1;
+            debug throw ex;
+            else {
+                import inui.core.msgbox : MessageBox, MessageType;
+                MessageBox.show(MessageType.error, "Uncaught Exception", ex.msg);
+                return -1;
+            }
         }
+        return 0;
     }
 
     /**

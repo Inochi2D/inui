@@ -86,6 +86,8 @@ protected:
 
     final
     void reparentTo(Widget newParent) {
+        this.onReparented(this.parent_, newParent);
+        
         this.selem_.parent = newParent.selem_;
         this.parent_ = newParent;
     }
@@ -138,6 +140,15 @@ protected:
         // Recomputes style
         computed_ = Application.thisApp.stylesheet.findRule(selem_);
     }
+
+    /**
+        Called when a widget is reparented in the hirearchy.
+
+        Params:
+            from =  The previous parent.
+            to =    The new parent.
+    */
+    void onReparented(Widget from, Widget to) { }
 
     /**
         Helper which pushes a style color to the stack automatically.
