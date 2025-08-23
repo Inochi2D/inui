@@ -476,7 +476,7 @@ public:
             flags = Additional flags to be passed to the window.
     */
     this(string title, vec2i size, ulong flags = 0) {
-        nstring zTitle = title;
+        nstring zTitle = title[];
         this(SDL_CreateWindow(zTitle.ptr, size.x, size.y, cast(SDL_WindowFlags)(flags | BASE_FLAGS)));
     }
 

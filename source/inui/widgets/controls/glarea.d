@@ -87,6 +87,6 @@ public:
     }
 
     this() {
-        super("glview");
+        super("glarea");
     }
 }

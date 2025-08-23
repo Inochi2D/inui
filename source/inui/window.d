@@ -30,9 +30,9 @@ private:
     IGContext context;
     View rootView_;
     Widget focusedWidget_;
-    long prevTime_;
-    long currTime_;
-    float deltaTime_;
+    ulong prevTime_;
+    ulong currTime_;
+    double deltaTime_;
 
     __gshared Window[] __active_windows;
     ptrdiff_t getIndex() {
@@ -49,7 +49,7 @@ private:
     void updateTiming() {
         prevTime_ = currTime_;
         currTime_ = SDL_GetTicks();
-        deltaTime_ = abs(cast(float)(currTime_-prevTime_)*0.001f);
+        deltaTime_ = abs(cast(double)(currTime_-prevTime_)*0.001f);
     }
 
     // Window state
@@ -216,7 +216,12 @@ public:
     /**
         The time between this and the last frame.
     */
-    @property float deltaTime() { return deltaTime_; }
+    @property double deltaTime() { return deltaTime_; }
+
+    /**
+        The current time step of the window.
+    */
+    @property double currentTime() { return currTime_; }
 
     /**
         Gets a NativeWindow from its ID.

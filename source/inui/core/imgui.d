@@ -530,6 +530,7 @@ private:
         ctx.Style.Colors[ImGuiCol.TitleBg] = titlebar;
         ctx.Style.Colors[ImGuiCol.TitleBgCollapsed] = titlebar;
         ctx.Style.Colors[ImGuiCol.TitleBgActive] = titlebarActive;
+        ctx.Style.Colors[ImGuiCol.DockingEmptyBg] = ImVec4(0, 0, 0, 0);
 
         ctx.Style.FramePadding = ImVec2(6, 4);
         ctx.Style.FrameRounding = 6;

@@ -19,9 +19,9 @@ configuration "macOS" {
 	platforms "osx"
 
 	lflags "-framework" "Cocoa" "-framework" "CoreVideo" "-rpath" "." "-all_load"
-	dependency "objective-d" version=">=1.1.1"
-	dependency "metal-d" version=">=0.5.1"
-	dependency "coregraphics-d" version=">=0.5.1"
+	dependency "objective-d" version="~main"
+	dependency "metal-d" version="~main"
+	dependency "coregraphics-d" version="~main"
 
     subConfiguration "sdl-d" "apple"
     sourcePaths "backends/mtl"

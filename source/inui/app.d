@@ -118,6 +118,7 @@ private:
         assert(info.version_, "Version number must be specified!");
         assert(info.id, "ID must be specified!");
         assert(info.authorId && info.appId, "ID is malformed!");
+
         SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_NAME_STRING, info.name.ptr);
         SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_VERSION_STRING, info.version_.ptr);
         SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_IDENTIFIER_STRING, info.id.ptr);
@@ -269,6 +270,16 @@ public:
         The app's main menu.
     */
     @property Menu mainMenu() => mainMenu_;
+
+    /**
+        Information about the app.
+    */
+    @property AppInfo appInfo() => info;
+
+    /**
+        Time since the start of the application.
+    */
+    @property double currentTime() => SDL_GetTicks()*0.001;
 
     /**
         Destructor
