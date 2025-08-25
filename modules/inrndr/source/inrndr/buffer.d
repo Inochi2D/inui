@@ -36,7 +36,7 @@ public:
         Ummap the given CPU-visible buffer.
         
         Params:
-            buffer = The CPU-visible slice to unmap, owned by this Buffer.
+            slice = The CPU-visible slice to unmap, owned by this Buffer.
     */
     abstract void unmap(ref void[] slice);
 

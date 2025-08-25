@@ -73,7 +73,6 @@ public:
 
         Params:
             text        = The text that should be on the button
-            size        = The size of the button.
     */
     this(string text) {
         super("button");

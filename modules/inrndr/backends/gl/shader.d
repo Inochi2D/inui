@@ -7,9 +7,11 @@
     Authors: Luna Nielsen
 */
 module gl.shader;
-import inrndr.shader;
-import bindbc.opengl;
+import gl.context;
 import numem;
+import nulib;
+
+public import inrndr.shader;
 
 class GLShader : Shader {
 private:

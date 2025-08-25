@@ -46,7 +46,8 @@ public:
         Creates an embedded GL context which can be rendered by the render context.
 
         Params:
-            type = The type of sub context to create.
+            width = Width of the context's framebuffer.
+            height = Height of the context's framebuffer.
         
         Returns:
             A new sub context if possible,
@@ -78,7 +79,7 @@ public:
         the data allocated for the buffer is not.
 
         Params:
-            sizeInByte = How many bytes to allocate for the buffer.
+            sizeInBytes = How many bytes to allocate for the buffer.
 
         Returns:
             A newly allocated buffer with the given size.
