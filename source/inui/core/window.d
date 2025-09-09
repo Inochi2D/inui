@@ -14,8 +14,6 @@ import numem;
 import sdl;
 import sdl.rect;
 
-public import inrndr;
-
 /**
     A system theme
 */
@@ -171,9 +169,9 @@ private:
 
     // Base SDL flags to apply.
     version(OSX)
-        enum ulong BASE_FLAGS = SDL_WindowFlags.SDL_WINDOW_METAL | SDL_WindowFlags.SDL_WINDOW_HIDDEN | SDL_WindowFlags.SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WindowFlags.SDL_WINDOW_TRANSPARENT;
+        enum ulong BASE_FLAGS = SDL_WindowFlags.SDL_WINDOW_HIDDEN | SDL_WindowFlags.SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WindowFlags.SDL_WINDOW_TRANSPARENT;
     else 
-        enum ulong BASE_FLAGS = SDL_WindowFlags.SDL_WINDOW_OPENGL | SDL_WindowFlags.SDL_WINDOW_HIDDEN | SDL_WindowFlags.SDL_WINDOW_HIGH_PIXEL_DENSITY;
+        enum ulong BASE_FLAGS = SDL_WindowFlags.SDL_WINDOW_HIDDEN | SDL_WindowFlags.SDL_WINDOW_HIGH_PIXEL_DENSITY;
 
     T getProperty(T)(string key, T defaultValue = T.init) {
         import sdl.properties;
