@@ -32,7 +32,7 @@ class Swapchain : GPUObject {
 private:
 @nogc:
     SDL_GPUSwapchainComposition compositionFlags = SDL_GPUSwapchainComposition.SDL_GPU_SWAPCHAINCOMPOSITION_SDR;
-    PresentMode presentMode = PresentMode.vsync;
+    PresentMode presentMode = PresentMode.mailbox;
     SDL_Window* handle_;
 
 public:

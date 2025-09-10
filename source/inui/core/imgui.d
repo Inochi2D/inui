@@ -559,63 +559,7 @@ private:
         ctx.Style.GrabRounding = 6;
         ctx.Style.FrameBorderSize = 1;
         ctx.Style.TabBarBorderSize = 0;
-
-        // No system color scheme found.
-        if (!window.getColor(ColorStyle.none).isFinite)
-            return;
-
-        ImVec4 background = window.getColor(ColorStyle.background).toImGui!ImVec4;
-        ImVec4 backgroundHovered = window.getColor(ColorStyle.backgroundHovered).toImGui!ImVec4;
-        ImVec4 none = window.getColor(ColorStyle.none).toImGui!ImVec4;
-        ImVec4 hovered = window.getColor(ColorStyle.hovered).toImGui!ImVec4;
-        ImVec4 pressed = window.getColor(ColorStyle.pressed).toImGui!ImVec4;
-        ImVec4 selected = window.getColor(ColorStyle.selected).toImGui!ImVec4;
-        ImVec4 tab = window.getColor(ColorStyle.tab).toImGui!ImVec4;
-        ImVec4 tabActive = window.getColor(ColorStyle.tabActive).toImGui!ImVec4;
-        ImVec4 titlebar = window.getColor(ColorStyle.titlebar).toImGui!ImVec4;
-        ImVec4 titlebarActive = window.getColor(ColorStyle.titlebarActive).toImGui!ImVec4;
-        ImVec4 link = window.getColor(ColorStyle.link).toImGui!ImVec4;
-        ImVec4 text = window.getColor(ColorStyle.text).toImGui!ImVec4;
-        ImVec4 textDisabled = window.getColor(ColorStyle.textDisabled).toImGui!ImVec4;
-        ImVec4 textSelected = window.getColor(ColorStyle.textSelected).toImGui!ImVec4;
-
-        ctx.Style.Colors[ImGuiCol.Button] = none;
-        ctx.Style.Colors[ImGuiCol.ButtonHovered] = hovered;
-        ctx.Style.Colors[ImGuiCol.ButtonActive] = pressed;
-        ctx.Style.Colors[ImGuiCol.CheckMark] = selected;
-        ctx.Style.Colors[ImGuiCol.FrameBg] = background;
-        ctx.Style.Colors[ImGuiCol.FrameBgHovered] = backgroundHovered;
-        ctx.Style.Colors[ImGuiCol.FrameBgActive] = background;
-        ctx.Style.Colors[ImGuiCol.Text] = text;
-        ctx.Style.Colors[ImGuiCol.TextDisabled] = textDisabled;
-        ctx.Style.Colors[ImGuiCol.TextLink] = link;
-        ctx.Style.Colors[ImGuiCol.TextSelectedBg] = textSelected;
-        ctx.Style.Colors[ImGuiCol.DragDropTarget] = pressed;
-        ctx.Style.Colors[ImGuiCol.NavCursor] = pressed;
-        ctx.Style.Colors[ImGuiCol.Header] = background;
-        ctx.Style.Colors[ImGuiCol.HeaderHovered] = backgroundHovered;
-        ctx.Style.Colors[ImGuiCol.HeaderActive] = backgroundHovered;
-        ctx.Style.Colors[ImGuiCol.Separator] = background;
-        ctx.Style.Colors[ImGuiCol.SeparatorHovered] = backgroundHovered;
-        ctx.Style.Colors[ImGuiCol.SeparatorActive] = backgroundHovered;
-        ctx.Style.Colors[ImGuiCol.ResizeGrip] = background;
-        ctx.Style.Colors[ImGuiCol.ResizeGripHovered] = backgroundHovered;
-        ctx.Style.Colors[ImGuiCol.ResizeGripActive] = backgroundHovered;
-        ctx.Style.Colors[ImGuiCol.SliderGrab] = none;
-        ctx.Style.Colors[ImGuiCol.SliderGrabActive] = pressed;
-        ctx.Style.Colors[ImGuiCol.DockingPreview] = none;
-        ctx.Style.Colors[ImGuiCol.Tab] = tab;
-        ctx.Style.Colors[ImGuiCol.TabSelected] = tabActive;
-        ctx.Style.Colors[ImGuiCol.TabSelectedOverline] = tabActive;
-        ctx.Style.Colors[ImGuiCol.TabDimmed] = tab;
-        ctx.Style.Colors[ImGuiCol.TabDimmedSelected] = tabActive;
-        ctx.Style.Colors[ImGuiCol.TabDimmedSelectedOverline] = tabActive;
-        ctx.Style.Colors[ImGuiCol.TabHovered] = tabActive;
-        ctx.Style.Colors[ImGuiCol.TitleBg] = titlebar;
-        ctx.Style.Colors[ImGuiCol.TitleBgCollapsed] = titlebar;
-        ctx.Style.Colors[ImGuiCol.TitleBgActive] = titlebarActive;
         ctx.Style.Colors[ImGuiCol.DockingEmptyBg] = ImVec4(0, 0, 0, 0);
-
         ctx.Style.Colors[ImGuiCol.BorderShadow] = ctx.Style.Colors[ImGuiCol.Border];
         ctx.Style.Colors[ImGuiCol.WindowBg].w = 0.50;
         ctx.Style.Colors[ImGuiCol.TitleBg].w = 0.25;
@@ -623,6 +567,60 @@ private:
         ctx.Style.Colors[ImGuiCol.TitleBgActive].w = 0.25;
         ctx.Style.Colors[ImGuiCol.BorderShadow].w = 0.15;
         ctx.Style.Colors[ImGuiCol.Border].w = 0;
+
+        // Apply system color scheme.
+        if (window.getColor(ColorStyle.none).isFinite) {
+            ImVec4 background = window.getColor(ColorStyle.background).toImGui!ImVec4;
+            ImVec4 backgroundHovered = window.getColor(ColorStyle.backgroundHovered).toImGui!ImVec4;
+            ImVec4 none = window.getColor(ColorStyle.none).toImGui!ImVec4;
+            ImVec4 hovered = window.getColor(ColorStyle.hovered).toImGui!ImVec4;
+            ImVec4 pressed = window.getColor(ColorStyle.pressed).toImGui!ImVec4;
+            ImVec4 selected = window.getColor(ColorStyle.selected).toImGui!ImVec4;
+            ImVec4 tab = window.getColor(ColorStyle.tab).toImGui!ImVec4;
+            ImVec4 tabActive = window.getColor(ColorStyle.tabActive).toImGui!ImVec4;
+            ImVec4 titlebar = window.getColor(ColorStyle.titlebar).toImGui!ImVec4;
+            ImVec4 titlebarActive = window.getColor(ColorStyle.titlebarActive).toImGui!ImVec4;
+            ImVec4 link = window.getColor(ColorStyle.link).toImGui!ImVec4;
+            ImVec4 text = window.getColor(ColorStyle.text).toImGui!ImVec4;
+            ImVec4 textDisabled = window.getColor(ColorStyle.textDisabled).toImGui!ImVec4;
+            ImVec4 textSelected = window.getColor(ColorStyle.textSelected).toImGui!ImVec4;
+
+            ctx.Style.Colors[ImGuiCol.Button] = none;
+            ctx.Style.Colors[ImGuiCol.ButtonHovered] = hovered;
+            ctx.Style.Colors[ImGuiCol.ButtonActive] = pressed;
+            ctx.Style.Colors[ImGuiCol.CheckMark] = selected;
+            ctx.Style.Colors[ImGuiCol.FrameBg] = background;
+            ctx.Style.Colors[ImGuiCol.FrameBgHovered] = backgroundHovered;
+            ctx.Style.Colors[ImGuiCol.FrameBgActive] = background;
+            ctx.Style.Colors[ImGuiCol.Text] = text;
+            ctx.Style.Colors[ImGuiCol.TextDisabled] = textDisabled;
+            ctx.Style.Colors[ImGuiCol.TextLink] = link;
+            ctx.Style.Colors[ImGuiCol.TextSelectedBg] = textSelected;
+            ctx.Style.Colors[ImGuiCol.DragDropTarget] = pressed;
+            ctx.Style.Colors[ImGuiCol.NavCursor] = pressed;
+            ctx.Style.Colors[ImGuiCol.Header] = background;
+            ctx.Style.Colors[ImGuiCol.HeaderHovered] = backgroundHovered;
+            ctx.Style.Colors[ImGuiCol.HeaderActive] = backgroundHovered;
+            ctx.Style.Colors[ImGuiCol.Separator] = background;
+            ctx.Style.Colors[ImGuiCol.SeparatorHovered] = backgroundHovered;
+            ctx.Style.Colors[ImGuiCol.SeparatorActive] = backgroundHovered;
+            ctx.Style.Colors[ImGuiCol.ResizeGrip] = background;
+            ctx.Style.Colors[ImGuiCol.ResizeGripHovered] = backgroundHovered;
+            ctx.Style.Colors[ImGuiCol.ResizeGripActive] = backgroundHovered;
+            ctx.Style.Colors[ImGuiCol.SliderGrab] = none;
+            ctx.Style.Colors[ImGuiCol.SliderGrabActive] = pressed;
+            ctx.Style.Colors[ImGuiCol.DockingPreview] = none;
+            ctx.Style.Colors[ImGuiCol.Tab] = tab;
+            ctx.Style.Colors[ImGuiCol.TabSelected] = tabActive;
+            ctx.Style.Colors[ImGuiCol.TabSelectedOverline] = tabActive;
+            ctx.Style.Colors[ImGuiCol.TabDimmed] = tab;
+            ctx.Style.Colors[ImGuiCol.TabDimmedSelected] = tabActive;
+            ctx.Style.Colors[ImGuiCol.TabDimmedSelectedOverline] = tabActive;
+            ctx.Style.Colors[ImGuiCol.TabHovered] = tabActive;
+            ctx.Style.Colors[ImGuiCol.TitleBg] = titlebar;
+            ctx.Style.Colors[ImGuiCol.TitleBgCollapsed] = titlebar;
+            ctx.Style.Colors[ImGuiCol.TitleBgActive] = titlebarActive;
+        }
     }
 
 public:
