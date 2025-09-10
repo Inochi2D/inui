@@ -19,6 +19,8 @@ InUI depends on a few libraries to function correctly, the libraries are as foll
 | `CMake`        | Required to compile imgui.                                 |   All    |
 | `C++ compiler` | Required to compile imgui.                                 |   All    |
 | `glibc`        | Only tested w/ glibc, ymmv with other C runtimes on Linux. |   🐧    |
-| `MSVC 2022+`   |                                                            |   🪟    |
-| `D 2.111`      |                                                            |   All    |
-| `OpenGL 3.2`   |                                                            |   All    |
+| `MSVC 2022+`   | Used by D runtime                                          |   🪟    |
+| `D 2.111`      | Has patches neccesary to compile for OSX 15.4+             |   All    |
+| `glslang`      | Needed to compile shaders.                                 |  🪟🐧  |
+| `Vulkan 1.2`   | Used by SDL_gpu                                            |  🪟🐧  |
+| `Metal 3`      | Used by SDL_gpu                                            |   🍎    |

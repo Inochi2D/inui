@@ -22,6 +22,20 @@ configuration "windows" {
 	platforms "windows"
 	targetType "library"
 	subConfiguration "i2d-imgui" "dynamic_dynamicCRT"
+
+	preBuildCommands \
+		"glslang -V -o ./res/shaders/ui.frag.spv ./shaders/ui.frag.glsl" \
+		"glslang -V -o ./res/shaders/ui.vert.spv ./shaders/ui.vert.glsl"
+}
+
+configuration "linux" {
+	platforms "linux"
+	targetType "library"
+	subConfiguration "i2d-imgui" "dynamic_dynamicCRT"
+
+	preBuildCommands \
+		"glslang -V -o ./res/shaders/ui.frag.spv ./shaders/ui.frag.glsl" \
+		"glslang -V -o ./res/shaders/ui.vert.spv ./shaders/ui.vert.glsl"
 }
 
 configuration "macOS" {
@@ -31,10 +45,7 @@ configuration "macOS" {
 
 	dependency "objective-d" version=">=1.1.1"
 	subConfiguration "i2d-imgui" "dynamic_dynamicCRT"
-}
 
-configuration "linux" {
-	platforms "linux"
-	targetType "library"
-	subConfiguration "i2d-imgui" "dynamic_dynamicCRT"
+	preBuildCommands \
+		"mv shaders/ui.metal res/shaders/ui.metal"
 }

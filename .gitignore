@@ -11,6 +11,7 @@ __dummy.html
 
 # Output Artifacts
 out/
+res/shaders/*
 
 # Testing
 test/
