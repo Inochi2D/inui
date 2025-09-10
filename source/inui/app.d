@@ -198,7 +198,7 @@ private:
                         break;
 
                     case SDL_EventType.SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-                        if (auto window = Window.fromID(ev.window.windowID)) {
+                        if (auto window = NativeWindow.fromID(ev.window.windowID)) {
                             nogc_delete(window);
                         }
                         break;

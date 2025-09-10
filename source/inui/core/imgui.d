@@ -10,9 +10,8 @@ module inui.core.imgui;
 import inui.core.window;
 import inui.core.fonts;
 import inui.core.utils;
+import inui.core.render;
 import inui.image;
-import inrndr;
-import bindbc.opengl;
 import i2d.imgui;
 import nulib.math : isFinite;
 import inmath;
@@ -136,38 +135,109 @@ private:
     //      GL State
     //
     nstring g_RenderName;
+    CommandQueue g_Queue;
     CommandBuffer g_Cmds;
-    BufferCache g_VertexBufCache;
-    BufferCache g_IndexBufCache;
+    RenderCommandEncoder g_RenderPass;
+    TransferCommandEncoder g_TxrPass;
+    BufferCache g_VtxBufCache;
+    BufferCache g_IdxBufCache;
+    BufferCache g_TxrBufferCache;
+    Buffer[] g_IdxBuffers;
+    Buffer[] g_VtxBuffers;
     Buffer g_Uniforms;
-    Shader g_Shader;
+    Sampler g_Sampler;
+    RenderPipeline g_Pipeline;
 
     void createDeviceObjects() {
-        g_Uniforms = window.renderer.createBuffer(mat4.sizeof);
-        g_VertexBufCache = nogc_new!BufferCache(window.renderer);
-        g_IndexBufCache = nogc_new!BufferCache(window.renderer);
+        g_Queue = window.renderer.createQueue();
+        g_Uniforms = window.renderer.createBuffer(
+            BufferDescriptor(
+                BufferType.uniform, 
+                mat4.sizeof
+            )
+        );
+        g_Sampler = window.renderer.createSampler(
+            SamplerDescriptor(
+                TextureFilter.linear,
+                TextureFilter.linear,
+                TextureWrap.clampToEdge,
+                TextureWrap.clampToEdge,
+                1      
+            )
+        );
 
-        version(OSX)
-            g_Shader = window.renderer.createShader(import("shaders/ui.metal"));
-        else
-            g_Shader = window.renderer.createShader(import("shaders/ui.glsl"));
+        g_VtxBufCache = nogc_new!BufferCache(window.renderer, BufferType.vertex);
+        g_IdxBufCache = nogc_new!BufferCache(window.renderer, BufferType.index);
+        g_TxrBufferCache = nogc_new!BufferCache(window.renderer, BufferType.staging);
+
+        version(OSX) {
+            Shader vertexShader = window.renderer.createShader(
+                ShaderDescriptor(
+                    ShaderStage.vertex, 
+                    cast(ubyte[])import("shaders/ui.metal"), 
+                    "vertex_main", 
+                    1, 
+                    1
+                )
+            );
+            Shader fragmentShader = window.renderer.createShader(
+                ShaderDescriptor(
+                    ShaderStage.fragment, 
+                    cast(ubyte[])import("shaders/ui.metal"), 
+                    "fragment_main", 
+                    1, 
+                    1
+                )
+            );
+        } else {
+            Shader vertexShader = window.renderer.createShader(
+                ShaderDescriptor(
+                    ShaderStage.vertex, 
+                    cast(ubyte[])import("shaders/ui.vert.spv"), 
+                    "main",
+                    0,
+                    1
+                )
+            );
+            Shader fragmentShader = window.renderer.createShader(
+                ShaderDescriptor(
+                    ShaderStage.fragment, 
+                    cast(ubyte[])import("shaders/ui.frag.spv"), 
+                    "main", 
+                    1, 
+                    0
+                )
+            );
+        }
+
+        g_Pipeline = nogc_new!RenderPipeline(RenderPipelineDescriptor(
+            vertexShader,
+            fragmentShader,
+            [
+                VertexBufferDescriptor(0, ImDrawVert.sizeof, [
+                    VertexAttributeDescriptor(0, VertexFormat.FLOAT2),
+                    VertexAttributeDescriptor(8, VertexFormat.FLOAT2),
+                    VertexAttributeDescriptor(16, VertexFormat.UBYTE4_NORM),
+                ])
+            ],
+            [window.renderer.swapchain.textureFormat],
+            TextureFormat.none
+        ));
     }
 
     void destroyDeviceObjects() {
-        g_VertexBufCache.release();
-        g_IndexBufCache.release();
-        g_Shader.release();
+        g_VtxBufCache.release();
+        g_IdxBufCache.release();
+        g_TxrBufferCache.release();
 
-        g_VertexBufCache = null;
-        g_IndexBufCache = null;
-        g_Shader = null;
+        g_VtxBufCache = null;
+        g_IdxBufCache = null;
     }
 
     void setupRenderState(ImDrawData* drawData, rect fbArea) {
 
         // Setup viewport, orthographic projection matrix
         // Our visible imgui space lies from draw_data.DisplayPos (top left) to draw_data.DisplayPos+data_data.DisplaySize (bottom right). DisplayPos is (0,0) for single viewport apps.
-        g_Cmds.setViewport(fbArea);
         version(OSX) {
             g_Uniforms.set([mat4.orthographic01(
                 drawData.DisplayPos.x,
@@ -183,9 +253,9 @@ private:
                 drawData.DisplayPos.y + drawData.DisplaySize.y,
                 drawData.DisplayPos.y,
                 -1, 1
-            )]);
+            ).transposed()]);
         }
-        g_Cmds.setUniformBuffer(g_Uniforms, 0);
+        g_RenderPass.viewport = fbArea;
     }
 
     void render(ImDrawData* drawData) {
@@ -196,32 +266,8 @@ private:
         if (fbWidth <= 0 || fbHeight <= 0)
             return;
 
-        // Update textures
-        if (drawData.Textures !is null) {
-            foreach(ImTextureData* texture; drawData.Textures.Data[0..drawData.Textures.size()]) {
-                if (texture.Status != ImTextureStatus.OK)
-                    this.updateTexture(texture);
-            }
-        }
-
-        vec2i windowSize = window.ptSize;
-        rect fbArea = rect(windowSize.x-fbWidth, windowSize.y-fbHeight, fbWidth, fbHeight);
-        
-        // Setup desired state
-        g_Cmds = window.renderer.beginPass(RenderPassDescriptor(
-            [RenderTargetDescriptor(window.renderer.swapchain.next, true, vec4(0, 0, 0, 0))],
-            VertexDescriptor(
-                attributes: [
-                    VertexAttributeDescriptor(ImDrawVert.pos.offsetof, VertexFormat.float2),
-                    VertexAttributeDescriptor(ImDrawVert.uv.offsetof, VertexFormat.float2),
-                    VertexAttributeDescriptor(ImDrawVert.col.offsetof, VertexFormat.ubyte4),
-                ],
-                rate: 1,
-                stride: ImDrawVert.sizeof
-            ),
-            g_Shader
-        ));
-        this.setupRenderState(drawData, fbArea);
+        rect fbArea = rect(0, 0, fbWidth, fbHeight);
+        g_Cmds = g_Queue.newCommandBuffer();
 
         // Will project scissor/clipping rectangles into framebuffer space
         ImVec2 clip_off = ImVec2(
@@ -234,15 +280,52 @@ private:
             drawData.FramebufferScale.y
         ); // (1,1) unless using retina display which are often (2,2)
 
+        // Fill buffers.
+        g_IdxBuffers.length = drawData.CmdListsCount;
+        g_VtxBuffers.length = drawData.CmdListsCount;
+        Buffer g_TxrBufferVtx;
+        Buffer g_TxrBufferIdx;
+        g_TxrPass = g_Cmds.beginTransferPass();
+            foreach(n; 0..drawData.CmdListsCount) {
+                const ImDrawList* cmdList = drawData.CmdLists[n];
+                g_TxrBufferVtx = g_TxrBufferCache.dequeueBuffer(cast(uint)(cmdList.VtxBuffer.Size * ImDrawVert.sizeof));
+                g_TxrBufferIdx = g_TxrBufferCache.dequeueBuffer(cast(uint)(cmdList.IdxBuffer.Size * ImDrawIdx.sizeof));
+                g_VtxBuffers[n] = g_VtxBufCache.dequeueBuffer(cast(uint)(cmdList.VtxBuffer.Size * ImDrawVert.sizeof));
+                g_IdxBuffers[n] = g_IdxBufCache.dequeueBuffer(cast(uint)(cmdList.IdxBuffer.Size * ImDrawIdx.sizeof));
+                
+                // Upload vertex/index buffers
+                g_TxrBufferVtx.set(cast(void[])cmdList.VtxBuffer.Data[0..cmdList.VtxBuffer.Size]);
+                g_TxrBufferIdx.set(cast(void[])cmdList.IdxBuffer.Data[0..cmdList.IdxBuffer.Size]);
+
+                g_TxrPass.copyBufferToBuffer(g_VtxBuffers[n], g_TxrBufferVtx, 0, 0, cast(uint)(cmdList.VtxBuffer.Size * ImDrawVert.sizeof));
+                g_TxrPass.copyBufferToBuffer(g_IdxBuffers[n], g_TxrBufferIdx, 0, 0, cast(uint)(cmdList.IdxBuffer.Size * ImDrawIdx.sizeof));
+            }
+
+            if (drawData.Textures !is null) {
+                foreach(ImTextureData* texture; drawData.Textures.Data[0..drawData.Textures.size()]) {
+                    if (texture.Status != ImTextureStatus.OK)
+                        this.updateTexture(texture);
+                }
+            }
+        g_TxrPass.end();
+            
+        // Setup desired state
+        g_RenderPass = g_Cmds.beginRenderPass(RenderPassDescriptor([
+                ColorAttachmentDescriptor(g_Cmds.acquireSwapchainTexture(), LoadAction.clear, StoreAction.store, vec4(0, 0, 0, 0))
+            ]
+        ));
+
+        g_RenderPass.setRenderPipeline(g_Pipeline);
+        g_RenderPass.cullMode = CullMode.none;
+        g_RenderPass.srcColorFactor = BlendFactor.srcAlpha;
+        g_RenderPass.srcAlphaFactor = BlendFactor.srcAlpha;
+        g_RenderPass.dstColorFactor = BlendFactor.oneMinusSrcAlpha;
+        g_RenderPass.dstAlphaFactor = BlendFactor.oneMinusSrcAlpha;
+        this.setupRenderState(drawData, fbArea);
+
         // Render command lists
         for (int n = 0; n < drawData.CmdListsCount; n++) {
             const ImDrawList* cmd_list = drawData.CmdLists[n];
-
-            // Upload vertex/index buffers
-            Buffer g_VertexBuf = g_VertexBufCache.dequeueBuffer(cast(uint)(cmd_list.VtxBuffer.Size * ImDrawVert.sizeof));
-            Buffer g_IndexBuf = g_IndexBufCache.dequeueBuffer(cast(uint)(cmd_list.IdxBuffer.Size * ImDrawIdx.sizeof));
-            g_VertexBuf.set(cast(void[])cmd_list.VtxBuffer.Data[0..cmd_list.VtxBuffer.Size]);
-            g_IndexBuf.set(cast(void[])cmd_list.IdxBuffer.Data[0..cmd_list.IdxBuffer.Size]);
 
             for (int cmd_i = 0; cmd_i < cmd_list.CmdBuffer.Size; cmd_i++) {
                 const(ImDrawCmd)* pcmd = &cmd_list.CmdBuffer.Data[cmd_i];
@@ -263,51 +346,58 @@ private:
 
                     if (clipRect.x < fbWidth && clipRect.y < fbHeight && clipRect.z >= 0.0f && clipRect.w >= 0.0f) {
                         // Apply scissor/clipping rectangle
-                        g_Cmds.setScissor(rect(
-                            clipRect.x, 
-                            clipRect.y, 
-                            (clipRect.z - clipRect.x), 
-                            (clipRect.w - clipRect.y)
-                        ));
+                        g_RenderPass.scissor = recti(
+                            cast(int)clipRect.x, 
+                            cast(int)clipRect.y, 
+                            cast(int)(clipRect.z - clipRect.x), 
+                            cast(int)(clipRect.w - clipRect.y)
+                        );
 
                         // Will not validate in Metal.
                         if (pcmd.ElemCount == 0)
                             continue;
 
-                        Texture texture = cast(Texture)cast(void*)ImTextureRef_GetTexID(cast(ImTextureRef*)&pcmd.TexRef);
+                        Texture2D texture = cast(Texture2D)cast(void*)ImTextureRef_GetTexID(cast(ImTextureRef*)&pcmd.TexRef);
 
                         // Bind texture, Draw
-                        g_Cmds.setTexture(texture, 0);
-                        g_Cmds.drawTriangles(g_VertexBuf, g_IndexBuf, ImDrawIdx.sizeof, pcmd.ElemCount, cast(uint)(pcmd.IdxOffset * ImDrawIdx.sizeof), pcmd.VtxOffset);
+                        g_RenderPass.setFragmentTexture(0, texture, g_Sampler);
+                        g_RenderPass.setVertexBuffer(0, g_Uniforms);
+                        g_RenderPass.setFragmentBuffer(0, g_Uniforms);
+                        g_RenderPass.setVertexBuffer(0, g_VtxBuffers[n]);
+                        g_RenderPass.setIndexBuffer(g_IdxBuffers[n], ImDrawIdx.sizeof == 2 ? IndexType.uint16 : IndexType.uint32);
+                        g_RenderPass.drawIndexed(pcmd.ElemCount, pcmd.IdxOffset, pcmd.VtxOffset);
                     }
                 }
             }
         }
 
-        window.renderer.submit(g_Cmds);
+        g_RenderPass.end();
+        g_Queue.submit(g_Cmds);
+        g_Queue.awaitCompletion();
     }
 
     void updateTexture(ImTextureData* texture) {
         if (texture.Status == ImTextureStatus.WantCreate) {
             void[] pixels = (cast(void*)ImTextureData_GetPixels(texture))[0..ImTextureData_GetSizeInBytes(texture)];
-            Texture toUpdate = window.renderer.createTexture(texture.Width, texture.Height, PixelFormat.rgba32Unorm);
-            toUpdate.minFilter = TextureFilter.linear;
-            toUpdate.magFilter = TextureFilter.linear;
+            Texture2D toUpdate = window.renderer.createTexture(
+                TextureDescriptor(TextureFormat.rgba8Unorm, texture.Width, texture.Height, 1)
+            );
+            auto g_TxrBuffer = g_TxrBufferCache.dequeueBuffer(toUpdate.byteLength);
 
-            toUpdate.updateRegion(pixels, texture.Width, texture.Height, PixelFormat.rgba32Unorm, vec2i(0, 0));
+            g_TxrBuffer.set(pixels);
+            g_TxrPass.copyBufferToTexture(toUpdate, g_TxrBuffer, 0, texture.Width, 0);
             ImTextureData_SetTexID(texture, cast(ImTextureID)cast(void*)toUpdate);
             ImTextureData_SetStatus(texture, ImTextureStatus.OK);
         } else if (texture.Status == ImTextureStatus.WantUpdates) {
-            Texture toUpdate = cast(Texture)(cast(void*)ImTextureData_GetTexID(texture));
-            void[] pixels = (cast(void*)ImTextureData_GetPixels(texture))[0..ImTextureData_GetSizeInBytes(texture)];
-            foreach(ImTextureRect r; texture.Updates.Data[0..texture.Updates.size]) {
-                toUpdate.updateRegion(pixels, texture.Width, texture.Height, PixelFormat.rgba32Unorm, recti(r.x, r.y, r.w, r.h), vec2i(r.x, r.y));
-            }
+            Texture2D toUpdate = cast(Texture2D)(cast(void*)ImTextureData_GetTexID(texture));
+            Buffer g_TxrBuffer = g_TxrBufferCache.dequeueBuffer(toUpdate.byteLength);
 
+            void[] pixels = (cast(void*)ImTextureData_GetPixels(texture))[0..ImTextureData_GetSizeInBytes(texture)];
+            g_TxrBuffer.set(pixels);
+            g_TxrPass.copyBufferToTexture(toUpdate, g_TxrBuffer, 0, texture.Width, 0);
             ImTextureData_SetStatus(texture, ImTextureStatus.OK);
         } else if (texture.Status == ImTextureStatus.WantDestroy && texture.UnusedFrames > 0) {
-
-            Texture toUpdate = cast(Texture)(cast(void*)ImTextureData_GetTexID(texture));
+            Texture2D toUpdate = cast(Texture2D)(cast(void*)ImTextureData_GetTexID(texture));
             toUpdate.release();
 
             ImTextureData_SetTexID(texture, 0);
@@ -474,7 +564,11 @@ private:
         else
             igStyleColorsLight(&ctx.Style);
 
-        ctx.Style.FramePadding = ImVec2(0, 0);
+        ctx.Style.FramePadding = ImVec2(6, 4);
+        ctx.Style.FrameRounding = 6;
+        ctx.Style.GrabRounding = 6;
+        ctx.Style.FrameBorderSize = 1;
+        ctx.Style.TabBarBorderSize = 0;
 
         // No system color scheme found.
         if (!window.getColor(ColorStyle.none).isFinite)
@@ -532,11 +626,6 @@ private:
         ctx.Style.Colors[ImGuiCol.TitleBgActive] = titlebarActive;
         ctx.Style.Colors[ImGuiCol.DockingEmptyBg] = ImVec4(0, 0, 0, 0);
 
-        ctx.Style.FramePadding = ImVec2(6, 4);
-        ctx.Style.FrameRounding = 6;
-        ctx.Style.GrabRounding = 6;
-        ctx.Style.FrameBorderSize = 1;
-        ctx.Style.TabBarBorderSize = 0;
         ctx.Style.Colors[ImGuiCol.BorderShadow] = ctx.Style.Colors[ImGuiCol.Border];
         ctx.Style.Colors[ImGuiCol.WindowBg].w = 0.50;
         ctx.Style.Colors[ImGuiCol.TitleBg].w = 0.25;
@@ -743,7 +832,6 @@ public:
         Starts rendering a new frame.
     */
     void beginFrame(float deltaTime) {
-        window.renderer.beginFrame();
         this.updateSystemColors();
         this.platformNewFrame(io, deltaTime);
         igNewFrame();
@@ -765,14 +853,12 @@ public:
         //     io.WantSaveIniSettings = false;
         // }
         initialized = true;
-        window.renderer.endFrame();
     }
 
     /**
         Makes this ImGui Context current.
     */
     void makeCurrent() {
-        window.renderer.makeCurrent();
         igSetCurrentContext(ctx);
     }
 

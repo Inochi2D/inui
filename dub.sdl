@@ -23,9 +23,9 @@ configuration "windows" {
 	targetType "library"
 	subConfiguration "i2d-imgui" "dynamic_dynamicCRT"
 
-	preBuildCommands \
-		"glslang -V -o ./res/shaders/ui.frag.spv ./shaders/ui.frag.glsl" \
-		"glslang -V -o ./res/shaders/ui.vert.spv ./shaders/ui.vert.glsl"
+	preGenerateCommands \
+		"glslang -V -o ./res/shaders/ui.vert.spv ./shaders/ui.vert" \
+		"glslang -V -o ./res/shaders/ui.frag.spv ./shaders/ui.frag"
 }
 
 configuration "linux" {
@@ -33,9 +33,9 @@ configuration "linux" {
 	targetType "library"
 	subConfiguration "i2d-imgui" "dynamic_dynamicCRT"
 
-	preBuildCommands \
-		"glslang -V -o ./res/shaders/ui.frag.spv ./shaders/ui.frag.glsl" \
-		"glslang -V -o ./res/shaders/ui.vert.spv ./shaders/ui.vert.glsl"
+	preGenerateCommands \
+		"glslang -V -o ./res/shaders/ui.vert.spv ./shaders/ui.vert" \
+		"glslang -V -o ./res/shaders/ui.frag.spv ./shaders/ui.frag"
 }
 
 configuration "macOS" {

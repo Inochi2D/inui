@@ -9,6 +9,7 @@
 module inui.core.render.shader;
 import inui.core.render.device;
 import inui.core.render.texture;
+import inui.core.render.eh;
 import sdl.gpu;
 import numem;
 
@@ -64,7 +65,7 @@ public:
         );
 
         auto createInfo = desc.toSDLShaderCreateInfo();
-        handle_ = SDL_CreateGPUShader(gpuHandle, &createInfo);
+        this.handle_ = enforceSDL(SDL_CreateGPUShader(gpuHandle, &createInfo));
     }
 }
 
@@ -80,6 +81,7 @@ enum ShaderStage : SDL_GPUShaderStage {
     Descriptor used to create a shader.
 */
 struct ShaderDescriptor {
+@nogc:
 
     /**
         The stage of the shader.
@@ -115,7 +117,9 @@ struct ShaderDescriptor {
             code: data.ptr,
             entrypoint: entrypoint.ptr,
             format: SDL_SHADER_FORMAT,
-            stage: stage
+            stage: stage,
+            num_samplers: samplerCount,
+            num_uniform_buffers: uniformCount,
         );
     }
 }

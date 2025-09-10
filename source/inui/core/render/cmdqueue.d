@@ -7,6 +7,9 @@
     Authors: Luna Nielsen
 */
 module inui.core.render.cmdqueue;
+import inui.core.render.device;
+import inui.core.render.cmdbuffer;
+import inui.core.render.eh;
 import nulib;
 import numem;
 import sdl.gpu;
@@ -40,14 +43,15 @@ public:
         Acquires a new command buffer from the queue.
     */
     CommandBuffer newCommandBuffer() {
-        return nogc_new!CommandBuffer(this, SDL_AcquireGPUCommandBuffer(gpuHandle));
+        return nogc_new!CommandBuffer(this);
     }
 
     /**
         Submits a command buffer to the queue.
     */
     void submit(CommandBuffer buffer) {
-        fences ~= SDL_SubmitGPUCommandBufferAndAcquireFence(buffer.handle);
+        fences ~= enforceSDL(SDL_SubmitGPUCommandBufferAndAcquireFence(buffer.handle));
+        nogc_delete(buffer);
     }
 
     /**
@@ -55,7 +59,7 @@ public:
     */
     void awaitCompletion() {
         if (fences.length > 0)
-            SDL_WaitForGPUFences(gpuHandle, true, fences.ptr, fences.length);
+            SDL_WaitForGPUFences(gpuHandle, true, fences.ptr, cast(uint)fences.length);
         this.clearFences();
     }
 }

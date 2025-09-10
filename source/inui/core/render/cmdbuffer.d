@@ -12,9 +12,11 @@ import inui.core.render.swapchain;
 import inui.core.render.device;
 import inui.core.render.texture;
 import inui.core.render.buffer;
+import inui.core.render.eh;
 import nulib;
 import numem;
 import sdl.gpu;
+import sdl.error;
 
 public import inui.core.render.renderencoder;
 public import inui.core.render.transferencoder;
@@ -27,8 +29,8 @@ private:
 @nogc:
     SDL_GPUCommandBuffer* handle_;
     CommandQueue queue;
-    CommandEncoder current;
     Texture2D swapchainTexture;
+    uint encoderDepth = 0;
 
 public:
 
@@ -51,9 +53,9 @@ public:
     /**
         Acquires a new command buffer.
     */
-    this(CommandQueue queue, SDL_GPUCommandBuffer* handle) {
+    this(CommandQueue queue) {
         this.queue = queue;
-        this.handle_ = handle;
+        this.handle_ = enforceSDL(SDL_AcquireGPUCommandBuffer(queue.device.handle));
     }
 
     /**
@@ -64,13 +66,11 @@ public:
         command buffer.
     */
     Texture2D acquireSwapchainTexture() {
-        if (!swapchainTexture) {
-            SDL_GPUTexture* tex;
-            uint width;
-            uint height;
-            SDL_WaitAndAcquireGPUSwapchainTexture(handle_, device.swapchain.handle, &tex, &width, &height);
-            swapchainTexture = nogc_new!Texture2D(tex, device.swapchain.textureFormat, width, height);
-        }
+        if (!device.swapchain)
+            return null;
+
+        if (!swapchainTexture) 
+            swapchainTexture = device.swapchain.claimNext(this);
         return swapchainTexture;
     }
 
@@ -78,11 +78,8 @@ public:
         Begins a new render pass.
     */
     RenderCommandEncoder beginRenderPass(RenderPassDescriptor desc) {
-        if (current)
-            return null;
-
-        this.current = nogc_new!RenderCommandEncoder(desc);
-        return current;
+        encoderDepth++;
+        return nogc_new!RenderCommandEncoder(this, desc);
     }
 
     /**
@@ -93,11 +90,8 @@ public:
             $(D null) otherwise.
     */
     TransferCommandEncoder beginTransferPass() {
-        if (current)
-            return null;
-
-        this.current = nogc_new!TransferCommandEncoder(SDL_BeginGPUCopyPass(handle_));
-        return current;
+        encoderDepth++;
+        return nogc_new!TransferCommandEncoder(this, SDL_BeginGPUCopyPass(handle_));
     }
 
     /**
@@ -107,7 +101,7 @@ public:
             texture = The texture to generate mimpmaps for.
     */
     void generateMipmapsFor(Texture2D texture) {
-        if (current)
+        if (encoderDepth > 0)
             return;
         
         SDL_GenerateMipmapsForGPUTexture(handle_, texture.handle);
@@ -123,11 +117,9 @@ public:
 */
 abstract
 class CommandEncoder : NuObject {
-private:
+protected:
 @nogc:
     CommandBuffer parent;
-
-protected:
 
     /// Shared Constructor
     this(CommandBuffer parent) {
@@ -146,6 +138,9 @@ public:
             result in undefined behaviour.
     */
     void end() {
-        nogc_delete(parent.current);
+        parent.encoderDepth--;
+
+        auto self = this;
+        nogc_delete(self);
     }
 }

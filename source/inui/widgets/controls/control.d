@@ -352,6 +352,22 @@ protected:
     void onSizeChanged(vec2 oldSize, vec2 newSize) { }
 
     /**
+        Called when the mouse has left the bounds of the widget.
+    */
+    override
+    void onMouseEnter() {
+        this.refresh();
+    }
+
+    /**
+        Called when the mouse has left the bounds of the widget.
+    */
+    override
+    void onMouseLeave() {
+        this.refresh();
+    }
+
+    /**
         Constructs a new control.
 
         Params:

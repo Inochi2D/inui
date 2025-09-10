@@ -7,7 +7,7 @@ layout(location = 2) in vec4 Color;
 layout(location = 0) out vec2 Frag_UV;
 layout(location = 1) out vec4 Frag_Color;
 
-layout(set = 0, binding = 0) uniform Proj {
+layout(set = 1, binding = 0) uniform Proj {
     mat4 ProjMtx;
 };
 

@@ -9,6 +9,7 @@
 module inui.core.render.gpucache;
 import inui.core.render.renderencoder;
 import inui.core.render.pipeline;
+import inui.core.render.texture;
 import inui.core.render.device;
 import inui.core.render.shader;
 import sdl.gpu;
@@ -21,36 +22,42 @@ import numem;
 class GPUPipelineCache : GPUObject {
 private:
 @nogc:
-    map!(RenderPipeline, vector!CachedPipeline) pipelines;
+    map!(RenderPipeline, CachedPipeline[]) pipelines;
 
     void createPipelineFor(ref CachedPipeline pipeline) {
         SDL_GPUGraphicsPipelineCreateInfo createInfo = pipeline.state.toPipelineCreateInfo();
 
         // Setup color target state.
-        auto targetDescriptions = nu_malloc!SDL_GPUColorTargetDescription(createInfo.target_info.num_color_targets);
-        auto blendState = pipeline.toBlendState();
-        foreach(i, ref SDL_GPUColorTargetDescription colorTarget; targetDescriptions) {
-            colorTarget.format = pipeline.state.renderPipeline.colorTargets[i];
-            colorTarget.blend_state = blendState;
+        vector!SDL_GPUColorTargetDescription colorTargets;
+        auto blendState = pipeline.state.toBlendState();
+        foreach(i; 0..pipeline.state.renderPipeline.colorTargets.length) {
+            if (pipeline.state.renderPipeline.colorTargets[i] == TextureFormat.none)
+                continue;
+
+            colorTargets ~= SDL_GPUColorTargetDescription(
+                pipeline.state.renderPipeline.colorTargets[i],
+                blendState
+            );
         }
 
-        createInfo.target_info.color_target_descriptions = targetDescriptions.ptr;
+        createInfo.target_info.color_target_descriptions = colorTargets.ptr;
+        createInfo.target_info.num_color_targets = cast(uint)colorTargets.length;
         pipeline.pipeline = SDL_CreateGPUGraphicsPipeline(
             gpuHandle,
             &createInfo
         );
-        nu_freea(targetDescriptions);
+        colorTargets.clear();
     }
 
 public:
 
     // Destructor
     ~this() {
-        foreach(vector!CachedPipeline cache; pipelines.byValue) {
-            foreach(ref CachedPipeline pipeline; cache[]) {
+        foreach(CachedPipeline[] cache; pipelines.byValue) {
+            foreach(ref CachedPipeline pipeline; cache) {
                 SDL_ReleaseGPUGraphicsPipeline(gpuHandle, pipeline.pipeline);
             }
-            cache.clear();
+            nu_freea(cache);
         }
         pipelines.clearContents();
     }
@@ -69,14 +76,18 @@ public:
         }
 
         foreach(pipeline; pipelines[state.renderPipeline]) {
-            if (pipeline.state == pipeline)
+            if (pipeline.state == state)
                 return pipeline.pipeline;
         }
 
         CachedPipeline newPipeline;
         newPipeline.state = state;
         this.createPipelineFor(newPipeline);
-        pipelines[state.renderPipeline] ~= newPipeline;
+
+        auto plist = pipelines[state.renderPipeline];
+        plist = plist.nu_resize(plist.length+1);
+        plist[$-1] = newPipeline;
+        pipelines[state.renderPipeline] = plist;
         return newPipeline.pipeline;
     }
 }
@@ -85,6 +96,7 @@ public:
     Combined pipeline state
 */
 struct PipelineState {
+@nogc:
     RenderPipeline renderPipeline;
     bool enableBlend = true;
     BlendOp colorBlendOp = BlendOp.add;
@@ -133,7 +145,7 @@ struct PipelineState {
     SDL_GPUGraphicsPipelineTargetInfo toGraphicsPipelineTargetInfo() {
         return SDL_GPUGraphicsPipelineTargetInfo(
             color_target_descriptions: null,
-            num_color_targets: renderPipeline.colorTargets.length,
+            num_color_targets: cast(uint)renderPipeline.colorTargets.length,
             depth_stencil_format: renderPipeline.depthStencilTarget,
             has_depth_stencil_target: renderPipeline.depthStencilTarget != TextureFormat.none
         );
@@ -142,17 +154,18 @@ struct PipelineState {
     private
     SDL_GPUGraphicsPipelineCreateInfo toPipelineCreateInfo() {
         return SDL_GPUGraphicsPipelineCreateInfo(
-            vertex_shader: pipeline.renderPipeline.vertex.handle,
-            fragment_shader: pipeline.renderPipeline.fragment.handle,
-            vertex_input_state: pipeline.renderPipeline.vertexInputState,
-            primitive_type: pipeline.topology,
+            vertex_shader: renderPipeline.vertex.handle,
+            fragment_shader: renderPipeline.fragment.handle,
+            vertex_input_state: renderPipeline.vertexInputState,
+            primitive_type: topology,
             rasterizer_state: this.toRasterState(),
+            multisample_state: SDL_GPUMultisampleState(SDL_GPUSampleCount.SDL_GPU_SAMPLECOUNT_1, 0, false, 0, 0, 0),
+            depth_stencil_state: SDL_GPUDepthStencilState(enable_depth_test: false, enable_depth_write: false, enable_stencil_test: false),
             target_info: this.toGraphicsPipelineTargetInfo(),
-            multisample_state: SDL_GPUMultisampleState(1, 0, false, 0, 0, 0),
         );
     }
 
-    bool opEquals(const PipelineState other) const {
+    bool opEquals(ref PipelineState other) {
         return
             this.renderPipeline is other.renderPipeline &&
             this.enableBlend is other.enableBlend &&

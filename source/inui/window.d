@@ -8,6 +8,7 @@
 */
 module inui.window;
 import std.algorithm.mutation : remove;
+import inui.core.render;
 import inui.core.window;
 import inui.core.imgui;
 import inui.widgets;
@@ -102,7 +103,7 @@ public:
     /**
         The backing renderer.
     */
-    @property RenderContext renderer() { return backing.renderer; }
+    @property RenderingDevice renderer() { return backing.renderer; }
     
     /**
         Whether the window has a vibrancy effect.

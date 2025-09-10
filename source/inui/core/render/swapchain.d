@@ -7,6 +7,8 @@
     Authors: Luna Nielsen
 */
 module inui.core.render.swapchain;
+import inui.core.render.cmdbuffer;
+import inui.core.render.texture;
 import inui.core.render.device;
 import sdl.video : SDL_Window;
 import sdl.gpu;
@@ -51,12 +53,12 @@ public:
     /**
         The texture format of swapchain textures.
     */
-    final @property TextureFormat textureFormat() => SDL_GetGPUSwapchainTextureFormat(gpuHandle, handle_);
+    final @property TextureFormat textureFormat() => cast(TextureFormat)SDL_GetGPUSwapchainTextureFormat(gpuHandle, handle_);
 
     /**
         The presentation mode for the swapchain.
     */
-    final @property PresentMode presentationMode() => presentFlags;
+    final @property PresentMode presentationMode() => presentMode;
     final @property Swapchain presentationMode(PresentMode value) {
         presentMode = value;
         return this;
@@ -71,7 +73,7 @@ public:
         compositionFlags = value ? 
             (isLinear ? SDL_GPUSwapchainComposition.SDL_GPU_SWAPCHAINCOMPOSITION_HDR_EXTENDED_LINEAR : SDL_GPUSwapchainComposition.SDL_GPU_SWAPCHAINCOMPOSITION_HDR10_ST2084) :
             (isLinear ? SDL_GPUSwapchainComposition.SDL_GPU_SWAPCHAINCOMPOSITION_SDR_LINEAR : SDL_GPUSwapchainComposition.SDL_GPU_SWAPCHAINCOMPOSITION_SDR);
-        SDL_SetGPUSwapchainParameters(gpuHandle, handle_, compositionFlags, presentFlags);
+        SDL_SetGPUSwapchainParameters(gpuHandle, handle_, compositionFlags, presentMode);
         return this;
     }
 
@@ -85,7 +87,7 @@ public:
         compositionFlags = compositionFlags < SDL_GPUSwapchainComposition.SDL_GPU_SWAPCHAINCOMPOSITION_HDR_EXTENDED_LINEAR ? 
             (value ? SDL_GPUSwapchainComposition.SDL_GPU_SWAPCHAINCOMPOSITION_SDR_LINEAR : SDL_GPUSwapchainComposition.SDL_GPU_SWAPCHAINCOMPOSITION_SDR) :
             (value ? SDL_GPUSwapchainComposition.SDL_GPU_SWAPCHAINCOMPOSITION_HDR_EXTENDED_LINEAR : SDL_GPUSwapchainComposition.SDL_GPU_SWAPCHAINCOMPOSITION_HDR10_ST2084);
-        SDL_SetGPUSwapchainParameters(gpuHandle, handle_, compositionFlags, presentFlags);
+        SDL_SetGPUSwapchainParameters(gpuHandle, handle_, compositionFlags, presentMode);
         return this;
     }
 
@@ -106,10 +108,36 @@ public:
         window.
     */
     this(RenderingDevice device, SDL_Window* window) {
-        this.device = device;
+        super(device);
         this.handle_ = window;
 
         enforce(checkCanClaim(window), "Can't claim window for rendering context.");
         SDL_ClaimWindowForGPUDevice(gpuHandle, handle_);
+    }
+
+    /**
+        Applies the current settings of the swapchain.
+    */
+    void applySettings() {
+        SDL_SetGPUSwapchainParameters(gpuHandle, handle_, compositionFlags, presentMode);
+    }
+
+    /**
+        Claims a texture for the given command buffer.
+
+        Params:
+            buffer = The command buffer to claim the texture for.
+        
+        Returns:
+            The next texture of the swapchain.
+    */
+    Texture2D claimNext(CommandBuffer buffer) {
+        SDL_GPUTexture* tex;
+        uint width;
+        uint height;
+        bool succeeded = SDL_WaitAndAcquireGPUSwapchainTexture(buffer.handle, handle_, &tex, &width, &height);
+        return succeeded && tex ? 
+            nogc_new!Texture2D(device, tex, device.swapchain.textureFormat, width, height) :
+            null;
     }
 }

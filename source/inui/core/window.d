@@ -7,6 +7,7 @@
     Authors: Luna Nielsen
 */
 module inui.core.window;
+import inui.core.render;
 import inui.widgets;
 import inmath;
 import nulib;
@@ -163,7 +164,7 @@ private:
 @nogc:
     __gshared weak_vector!NativeWindow windows_;
     SDL_Window* handle;
-    RenderContext context_;
+    RenderingDevice context_;
     bool closeRequested = false;
     SystemVibrancy vibrancy_;
 
@@ -381,7 +382,7 @@ public:
     /**
         The renderer Context associated with the window.
     */
-    @property RenderContext renderer() { return context_; }
+    @property RenderingDevice renderer() { return context_; }
 
     /**
         The area of the NativeWindow that's safe for interactive content.
@@ -461,8 +462,11 @@ public:
     this(SDL_Window* handle) {
         assert(handle, "Failed creating NativeWindow handle");
         this.handle = handle;
-        this.context_ = RenderContext.createContext(handle);
+        this.context_ = nogc_new!RenderingDevice();
+        this.context_.attachTo(handle);
         this.runOsInitHooks();
+        
+        windows_ ~= this;
     }
 
     /**

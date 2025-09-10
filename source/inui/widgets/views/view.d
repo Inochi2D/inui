@@ -69,7 +69,7 @@ protected:
             igBegin(imName.ptr, null, ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoSavedSettings);
                 this.isHovered = igIsWindowHovered();
                 this.isFocused = igIsWindowFocused();
-                Widget.onUpdate(delta);
+                super.onUpdate(delta);
             igEnd();
         }
     }

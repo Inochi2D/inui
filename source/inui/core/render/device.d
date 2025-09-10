@@ -16,6 +16,8 @@ import inui.core.render.gpucache;
 import inui.core.render.swapchain;
 import inui.core.render.texture;
 import inui.core.render.buffer;
+import inui.core.render.shader;
+import inui.core.render.eh;
 
 /**
     A device that can render 3D graphics to the screen
@@ -46,7 +48,8 @@ public:
 
     /// Destructor
     ~this() {
-        SDL_ReleaseWindowFromGPUDevice(handle_, window);
+        nogc_delete(swapchain_);
+        nogc_delete(pipelines_);
         SDL_DestroyGPUDevice(handle_);
     }
 
@@ -56,8 +59,16 @@ public:
         Params:
             window = The window to create the rendering device for.
     */
+    this(SDL_Window* window) {
+        this();
+        this.attachTo(window);
+    }
+
+    /**
+        Creates a new stand-alone rendering device
+    */
     this() {
-        this.handle_ = SDL_CreateGPUDevice(SDL_SHADER_FORMAT, DEBUG_MODE, null);
+        this.handle_ = enforceSDL(SDL_CreateGPUDevice(SDL_SHADER_FORMAT, DEBUG_MODE, null));
         this.pipelines_ = nogc_new!GPUPipelineCache(this);
     }
 
@@ -69,6 +80,7 @@ public:
     */
     void attachTo(SDL_Window* window) {
         swapchain_ = nogc_new!Swapchain(this, window);
+        swapchain_.applySettings();
     }
 
     /**
@@ -95,6 +107,19 @@ public:
     }
 
     /**
+        Creates a new sampler.
+
+        Params:
+            desc = The descriptor for the sampler.
+
+        Returns:
+            A new $(D Sampler) instance.
+    */
+    Sampler createSampler(SamplerDescriptor desc) {
+        return nogc_new!Sampler(this, desc);
+    }
+
+    /**
         Creates a new buffer.
 
         Params:
@@ -106,6 +131,19 @@ public:
     Buffer createBuffer(BufferDescriptor desc) {
         return nogc_new!Buffer(this, desc);
     }
+
+    /**
+        Creates a new shader.
+
+        Params:
+            desc = The descriptor for the shader.
+
+        Returns:
+            A new $(D Shader) instance.
+    */
+    Shader createShader(ShaderDescriptor desc) {
+        return nogc_new!Shader(this, desc);
+    }
 }
 
 /**
@@ -115,27 +153,27 @@ abstract
 class GPUObject : NuRefCounted {
 private:
 @nogc:
-    RenderingDevice device;
+    RenderingDevice device_;
 
 protected:
 
     /**
         The SDL_GPUDevice handle that backs this object.
     */
-    final @property SDL_GPUDevice* gpuHandle() => device.handle;
+    final @property SDL_GPUDevice* gpuHandle() => device_.handle;
 
 public:
 
     /**
         Gets the object's device.
     */
-    final @property RenderingDevice device() => device;
+    final @property RenderingDevice device() => device_;
 
     /**
         Base constructor.
     */
     this(RenderingDevice device) {
-        this.device = device;
+        this.device_ = device;
     }
 }
 

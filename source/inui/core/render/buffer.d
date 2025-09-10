@@ -9,6 +9,7 @@
 module inui.core.render.buffer;
 import inui.core.render.device;
 import sdl.gpu;
+import numem;
 
 /**
     Types of buffers.
@@ -43,40 +44,50 @@ private:
                 auto createInfo = SDL_GPUTransferBufferCreateInfo(
                     cast(SDL_GPUTransferBufferUsage)desc.type,
                     desc.size,
-                    null
+                    0
                 );
                 return cast(void*)SDL_CreateGPUTransferBuffer(
                     gpuHandle, 
                     &createInfo
                 );
-                break;
+
+            case BufferType.uniform:
+                return nu_malloc(desc.size);
 
             case BufferType.vertex:
             case BufferType.index:
-            case BufferType.uniform:
                 auto createInfo = SDL_GPUBufferCreateInfo(
                     cast(SDL_GPUBufferUsageFlags)desc.type,
                     desc.size,
-                    null
+                    0
                 );
                 return cast(void*)SDL_CreateGPUBuffer(
                     gpuHandle, 
                     &createInfo
                 );
-                break;
+            
+            default:
+                return null;
         }
     }
 
     void destroyBuffer(BufferType type, ref void* handle) {
         switch(type) {
+            case BufferType.uniform:
+                nu_free(handle_);
+                handle_ = null;
+                break;
+
             case BufferType.staging:
                 SDL_ReleaseGPUTransferBuffer(gpuHandle, cast(SDL_GPUTransferBuffer*)handle);
                 break;
 
             case BufferType.vertex:
             case BufferType.index:
-            case BufferType.uniform:
                 SDL_ReleaseGPUBuffer(gpuHandle, cast(SDL_GPUBuffer*)handle);
+                break;
+            
+            default:
                 break;
         }
         handle = null;
@@ -137,13 +148,16 @@ public:
             returns an empty slice for non-staging buffers.
 
         Notes:
-            The buffer MUST be a staging buffer.
+            The buffer MUST be either a uniform or staging buffer.
     */
     void[] map() {
-        if (desc.type != BufferType.staging)
-            return null;
+        if (desc.type == BufferType.staging)
+            return SDL_MapGPUTransferBuffer(gpuHandle, cast(SDL_GPUTransferBuffer*)handle_, true)[0..desc.size];
+        
+        if (desc.type == BufferType.uniform)
+            return handle_[0..desc.size];
 
-        return SDL_MapGPUTransferBuffer(gpuHandle, cast(SDL_GPUTransferBuffer*)handle_, true)[0..desc.size];
+        return null;
     }
 
     /**
@@ -152,6 +166,92 @@ public:
     void unmap() {
         if (desc.type != BufferType.staging)
             return;
+        
         SDL_UnmapGPUTransferBuffer(gpuHandle, cast(SDL_GPUTransferBuffer*)handle_);
+    }
+
+    /**
+        
+        Notes:
+            The buffer MUST be either a uniform or staging buffer.
+    */
+    void set(void[] data) {
+        import nulib.math : min;
+        
+        if (data.length == 0)
+            return;
+
+        auto mapped = map();
+        size_t toSet = min(data.length, mapped.length);
+        mapped[0..toSet] = data[0..toSet];
+        this.unmap();
+    }
+}
+
+/**
+    A cache of buffers.
+*/
+class BufferCache : GPUObject {
+private:
+@nogc:
+    import nulib.collections : vector;
+
+    struct BufferEntry {
+        size_t generation;
+        Buffer buffer;
+    }
+
+    BufferType toCreate;
+    vector!BufferEntry buffers;
+
+public:
+
+    @property uint bufferCount() => cast(uint)buffers.length;
+
+    /**
+        Constructs a new buffer cache for the given context.
+
+        Params:
+            owner = The owning render context of the buffer cache.
+            type =  The type of buffers to create.
+    */
+    this(RenderingDevice owner, BufferType type) {
+        super(owner);
+        this.toCreate = type;
+    }
+
+    /**
+        Dequeues a buffer from the cache.
+        If no fitting buffer is found, 
+    */
+    Buffer dequeueBuffer(uint length) {
+        Buffer result = null;
+
+        foreach_reverse(i; 0..buffers.length) {
+            buffers[i].generation++;
+            if (buffers[i].generation > 10) {
+                buffers[i].buffer.release();
+                buffers.removeAt(i);
+            }
+
+            if (i >= buffers.length)
+                break;
+
+            if (!result) {
+                if (!buffers[i].buffer && buffers[i].buffer.size >= length) {
+                    buffers[i].generation = 0;
+                    result = buffers[i].buffer;
+                }
+            }
+        }
+
+        if (!result) {
+            buffers ~= BufferEntry(0, device.createBuffer(BufferDescriptor(
+                toCreate,
+                length
+            )));
+            result = buffers[$-1].buffer;
+        }
+        return result;
     }
 }

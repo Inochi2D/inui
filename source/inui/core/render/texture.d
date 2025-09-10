@@ -17,10 +17,16 @@ class Texture2D : GPUObject {
 private:
 @nogc:
     bool owned = true;
+    uint byteLength_;
     TextureDescriptor desc;
     SDL_GPUTexture* handle_;
 
 public:
+
+    /**
+        The length of the texture data in bytes.
+    */
+    final @property uint byteLength() => byteLength_;
 
     /**
         Width of the texture in pixels.
@@ -66,7 +72,8 @@ public:
         super(device);
 
         this.desc = desc;
-        this.handle_ = SDL_CreateGPUTexture(device.handle, SDL_GPUTextureCreateInfo(
+        this.byteLength_ = SDL_CalculateGPUTextureFormatSize(desc.format, desc.width, desc.height, 1);
+        auto createInfo = SDL_GPUTextureCreateInfo(
             SDL_GPUTextureType.SDL_GPU_TEXTURETYPE_2D,
             desc.format,
             SDL_GPUTextureUsageFlags.SDL_GPU_TEXTUREUSAGE_COLOR_TARGET |
@@ -74,10 +81,12 @@ public:
             desc.width,
             desc.height,
             1,
-            mipLevels,
+            desc.mipLevels,
             SDL_GPUSampleCount.SDL_GPU_SAMPLECOUNT_1,
-            null
-        ));
+            0
+        );
+        this.owned = true;
+        this.handle_ = SDL_CreateGPUTexture(device.handle, &createInfo);
     }
 
     /**
@@ -85,8 +94,11 @@ public:
 
         This handle will not be owned by the Texture2D.
     */
-    this(SDL_GPUTexture* texture, TextureFormat format, uint width, uint height) {
-        this.handle_ = handle;
+    this(RenderingDevice device, SDL_GPUTexture* texture, TextureFormat format, uint width, uint height) {
+        super(device);
+
+        this.owned = false;
+        this.handle_ = texture;
         this.desc.format = format;
         this.desc.width = width;
         this.desc.height = height;
@@ -118,6 +130,44 @@ enum TextureFormat : SDL_GPUTextureFormat {
     bc7RGBAUnorm_sRGB   = SDL_GPUTextureFormat.SDL_GPU_TEXTUREFORMAT_BC7_RGBA_UNORM_SRGB,
     rgba32f             = SDL_GPUTextureFormat.SDL_GPU_TEXTUREFORMAT_R32G32B32A32_FLOAT,
     d24s8               = SDL_GPUTextureFormat.SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT,
+}
+
+/**
+    Gets the pixel stride for a texture format.
+*/
+uint toStride(TextureFormat format) @nogc nothrow pure {
+    switch(format) {
+        default: return 1;
+        
+        case TextureFormat.bc1RGBAUnorm: 
+        case TextureFormat.bc2RGBAUnorm: 
+        case TextureFormat.bc3RGBAUnorm: 
+        case TextureFormat.bc4RUnorm: 
+        case TextureFormat.bc5RGUnorm: 
+        case TextureFormat.bc7RGBAUnorm: 
+        case TextureFormat.bc1RGBAUnorm_sRGB:
+        case TextureFormat.bc2RGBAUnorm_sRGB:
+        case TextureFormat.bc3RGBAUnorm_sRGB:
+        case TextureFormat.bc7RGBAUnorm_sRGB:
+            return 1;
+        
+        case TextureFormat.a8Unorm:
+        case TextureFormat.r8Unorm: 
+            return 1;
+
+        case TextureFormat.rg8Unorm: 
+            return 2;
+        
+        case TextureFormat.rgba8Unorm: 
+        case TextureFormat.bgra8Unorm: 
+        case TextureFormat.rgba8Unorm_sRGB: 
+        case TextureFormat.bgra8Unorm_sRGB: 
+        case TextureFormat.d24s8: 
+            return 4;
+
+        case TextureFormat.rgba32f: 
+            return 16;
+    }
 }
 
 /**
@@ -159,16 +209,17 @@ public:
     Sampler descriptor
 */
 struct SamplerDescriptor {
+@nogc:
 
     /**
         Minification filter.
     */
-    TextureFilter minFilter = TextureFilter.bilinear;
+    TextureFilter minFilter = TextureFilter.linear;
     
     /**
         Magnification filter.
     */
-    TextureFilter magFilter = TextureFilter.bilinear;
+    TextureFilter magFilter = TextureFilter.linear;
     
     /**
         Wrapping mode for texture U coordinate.
@@ -223,8 +274,7 @@ enum TextureFilter {
 SDL_GPUFilter toGPUFilter(TextureFilter filter) @nogc nothrow pure {
     switch(filter) {
         case TextureFilter.nearest: return SDL_GPUFilter.SDL_GPU_FILTER_NEAREST;
-        case TextureFilter.bilinear: return SDL_GPUFilter.SDL_GPU_FILTER_LINEAR;
-        case TextureFilter.trilinear: return SDL_GPUFilter.SDL_GPU_FILTER_LINEAR;
+        case TextureFilter.linear: return SDL_GPUFilter.SDL_GPU_FILTER_LINEAR;
         default: return SDL_GPUFilter.SDL_GPU_FILTER_LINEAR;
     }
 }
@@ -241,8 +291,7 @@ SDL_GPUFilter toGPUFilter(TextureFilter filter) @nogc nothrow pure {
 SDL_GPUSamplerMipmapMode toMipmapSampleMode(TextureFilter filter) @nogc nothrow pure {
     switch(filter) {
         case TextureFilter.nearest: return SDL_GPUSamplerMipmapMode.SDL_GPU_SAMPLERMIPMAPMODE_NEAREST;
-        case TextureFilter.bilinear: return SDL_GPUSamplerMipmapMode.SDL_GPU_SAMPLERMIPMAPMODE_LINEAR;
-        case TextureFilter.trilinear: return SDL_GPUSamplerMipmapMode.SDL_GPU_SAMPLERMIPMAPMODE_LINEAR;
+        case TextureFilter.linear: return SDL_GPUSamplerMipmapMode.SDL_GPU_SAMPLERMIPMAPMODE_LINEAR;
         default: return SDL_GPUSamplerMipmapMode.SDL_GPU_SAMPLERMIPMAPMODE_LINEAR;
     }
 }

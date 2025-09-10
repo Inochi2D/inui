@@ -15,6 +15,7 @@ import inui.core.render.texture;
 import inui.core.render.buffer;
 import nulib;
 import numem;
+import inmath;
 import sdl.gpu;
 import sdl.pixels;
 import sdl.rect;
@@ -31,18 +32,28 @@ private:
     rect viewport_;
     recti scissor_;
     PipelineState state;
+    bool needsStateRefresh = false;
 
-protected:
-    this(CommandBuffer parent, RenderPassDescriptor desc) {
-        super(parent);
-
-        auto colorTargets = desc.colorAttachments.toSDLColorTargets();
-        auto depthStencilTarget = desc.depthStencilAttachment.toSDLDepthStencilTargetInfo();
-        this.handle_ = SDL_BeginGPURenderPass(parent.handle, colorTargets.ptr, colorTargets.length, &depthStencilTarget);
-        nu_freea(colorTargets);
+    void refreshState() {
+        if (needsStateRefresh) {
+            SDL_BindGPUGraphicsPipeline(
+                handle_,        
+                parent.device.pipelineCache.get(state)
+            );
+            this.needsStateRefresh = false;
+        }
     }
 
 public:
+    this(CommandBuffer parent, RenderPassDescriptor desc) {
+        super(parent);
+
+        auto colorTargets = desc.toSDLColorTargets();
+        auto depthStencilTarget = desc.depthStencilAttachment.toSDLDepthStencilTargetInfo();
+
+        this.handle_ = SDL_BeginGPURenderPass(parent.handle, colorTargets.ptr, cast(uint)colorTargets.length, depthStencilTarget.texture ? &depthStencilTarget : null);
+        nu_freea(colorTargets);
+    }
 
     /**
         The scissor rectangle.
@@ -59,15 +70,69 @@ public:
     @property rect viewport() => viewport_;
     @property void viewport(rect value) {
         SDL_GPUViewport vp = {
-            x = value.x,
-            y = value.y,
-            w = value.width,
-            h = value.height,
-            min_depth = 0,
-            max_depth = 1
+            x: value.x,
+            y: value.y,
+            w: value.width,
+            h: value.height,
+            min_depth: 0,
+            max_depth: 1
         };
         SDL_SetGPUViewport(handle_, &vp);
         this.viewport_ = value;
+    }
+
+    /**
+        The currently active culling mode.
+    */
+    @property CullMode cullMode() => state.cullMode;
+    @property void cullMode(CullMode value) {
+        state.cullMode = value;
+        this.needsStateRefresh = true;
+    }
+
+    /**
+        The currently active rendering topology.
+    */
+    @property Topology topology() => state.topology;
+    @property void topology(Topology value) {
+        state.topology = value;
+        this.needsStateRefresh = true;
+    }
+
+    /**
+        The currently active source color blending factor.
+    */
+    @property BlendFactor srcColorFactor() => state.srcColorFactor;
+    @property void srcColorFactor(BlendFactor value) {
+        state.srcColorFactor = value;
+        this.needsStateRefresh = true;
+    }
+
+    /**
+        The currently active source alpha blending factor.
+    */
+    @property BlendFactor srcAlphaFactor() => state.srcAlphaFactor;
+    @property void srcAlphaFactor(BlendFactor value) {
+        state.srcAlphaFactor = value;
+        this.needsStateRefresh = true;
+    }
+
+    /**
+        The currently active destination color blending factor.
+    */
+    @property BlendFactor dstColorFactor() => state.dstColorFactor;
+    @property void dstColorFactor(BlendFactor value) {
+        state.dstColorFactor = value;
+        this.needsStateRefresh = true;
+    }
+
+    /**
+        The currently active destination alpha blending factor.
+    */
+    @property BlendFactor dstAlphaFactor() => state.dstAlphaFactor;
+    @property void dstAlphaFactor(BlendFactor value) {
+        state.dstAlphaFactor = value;
+        this.needsStateRefresh = true;
     }
 
     /**
@@ -78,10 +143,7 @@ public:
     */
     void setRenderPipeline(RenderPipeline pipeline) {
         state.renderPipeline = pipeline;
-        SDL_BindGPUGraphicsPipeline(
-            handle_,        
-            parent.device.pipelineCache.get(state)
-        );
+        this.needsStateRefresh = true;
     }
 
     /**
@@ -90,16 +152,32 @@ public:
         Params:
             buffer =    The buffer to bind.
             indexType = The type of elements stored in the index buffer.
+            offset =    Offset into the index buffer to read from.
     */
-    void setIndexBuffer(Buffer buffer, IndexType indexType) {
+    void setIndexBuffer(Buffer buffer, IndexType indexType, uint offset = 0) {
         if (buffer.type != BufferType.index)
             return;
 
         SDL_GPUBufferBinding binding = {
-            buffer = buffer.handle,
-            offset = 0
+            buffer: cast(SDL_GPUBuffer*)buffer.handle,
+            offset: offset
         };
         SDL_BindGPUIndexBuffer(handle_, &binding, indexType);
+    }
+
+    /**
+        Sets a texture to use for sampling in the fragment shader
+        of the pipeline.
+    */
+    void setFragmentTexture(uint slot, Texture2D texture, Sampler sampler) {
+        if (!state.renderPipeline)
+            return;
+        
+        auto bindInfo = SDL_GPUTextureSamplerBinding(
+            texture: texture.handle,
+            sampler: sampler.handle
+        );
+        SDL_BindGPUFragmentSamplers(handle_, slot, &bindInfo, 1);
     }
 
     /**
@@ -108,18 +186,22 @@ public:
         Params:
             slot =      The slot to bind the buffer
             buffer =    The buffer to bind.
+            offset =    The offset into the buffer to bind.
+        
+        Note:
+            Offset does nothing for uniform buffers, the entire
+            buffer will always be pushed.
     */
-    void setVertexBuffer(uint slot, Buffer buffer) {
+    void setVertexBuffer(uint slot, Buffer buffer, uint offset = 0) {
         switch(buffer.type) {
             case BufferType.uniform:
-                auto hndl = buffer.handle;
-                SDL_BindGPUVertexStorageBuffers(handle_, slot, &hndl, 1);
+                SDL_PushGPUVertexUniformData(parent.handle, slot, buffer.handle, buffer.size);
                 return;
             
             case BufferType.vertex:
                 SDL_GPUBufferBinding binding = {
-                    buffer = buffer.handle,
-                    offset = 0
+                    buffer: cast(SDL_GPUBuffer*)buffer.handle,
+                    offset: offset
                 };
                 SDL_BindGPUVertexBuffers(handle_, slot, &binding, 1);
                 return;
@@ -137,14 +219,14 @@ public:
             buffer =    The buffer to bind.
     */
     void setFragmentBuffer(uint slot, Buffer buffer) {
-        if (buffer.type != BufferType.uniform)
-            return;
-        
-        SDL_GPUBufferBinding binding = {
-            buffer = buffer.handle,
-            offset = 0
-        };
-        SDL_BindGPUFragmentStorageBuffers(handle_, slot, &binding, 1);
+        switch(buffer.type) {
+            case BufferType.uniform:
+                SDL_PushGPUFragmentUniformData(parent.handle, slot, buffer.handle, buffer.size);
+                return;
+            
+            default:
+                break;
+        }
     }
 
     /**
@@ -155,6 +237,10 @@ public:
             vertexOffset =  Offset into the vertex buffer to draw from.
     */
     void draw(uint vertexCount, uint vertexOffset) {
+        if (!state.renderPipeline)
+            return;
+        
+        this.refreshState();
         SDL_DrawGPUPrimitives(handle_, vertexCount, 1, vertexOffset, 0); 
     }
 
@@ -167,6 +253,10 @@ public:
             baseVertex =    The base offset into the vertex buffer to draw from.
     */
     void drawIndexed(uint indexCount, uint startIndex, uint baseVertex) {
+        if (!state.renderPipeline)
+            return;
+        
+        this.refreshState();
         SDL_DrawGPUIndexedPrimitives(handle_, indexCount, 1, startIndex, baseVertex, 0);
     }
 
@@ -226,6 +316,7 @@ enum StoreAction : SDL_GPUStoreOp {
     Describes a render pass.
 */
 struct RenderPassDescriptor {
+@nogc:
 
     /**
         Color attachments.
@@ -242,11 +333,12 @@ struct RenderPassDescriptor {
         SDL equivalent.
     */
     SDL_GPUColorTargetInfo[] toSDLColorTargets() {
-        SDL_GPUColorTargetInfo[] tmp = nu_malloca!SDL_GPUColorTargetInfo(desc.colorAttachments.length);
-        foreach(i; 0..tmp.length) {
-            tmp[i] = desc.colorAttachments[i].toSDLColorTargetInfo();
+        weak_vector!SDL_GPUColorTargetInfo tmp;
+        foreach(i; 0..colorAttachments.length) {
+            if (colorAttachments[i].texture)
+                tmp ~= colorAttachments[i].toSDLColorTargetInfo();
         }
-        return tmp;
+        return tmp.take();
     }
 }
 
@@ -254,7 +346,8 @@ struct RenderPassDescriptor {
     Describes a single color attachment in a render pass.
 */
 struct ColorAttachmentDescriptor {
-    
+@nogc:
+
     /**
         The texture attached at this bind location.
     */
@@ -281,7 +374,7 @@ struct ColorAttachmentDescriptor {
     */
     SDL_GPUColorTargetInfo toSDLColorTargetInfo() {
         return SDL_GPUColorTargetInfo(
-            texture.handle,
+            texture ? texture.handle : null,
             0,
             0,
             *cast(SDL_FColor*)clearColor.ptr,
@@ -302,7 +395,8 @@ struct ColorAttachmentDescriptor {
     Describes a depth-stencil attachment in a render pass.
 */
 struct DepthStencilAttachmentDescriptor {
-    
+@nogc:
+
     /**
         The texture attached at this bind location.
     */
@@ -344,7 +438,7 @@ struct DepthStencilAttachmentDescriptor {
     */
     SDL_GPUDepthStencilTargetInfo toSDLDepthStencilTargetInfo() {
         return SDL_GPUDepthStencilTargetInfo(
-            texture.handle,
+            texture ? texture.handle : null,
             clearDepth,
             depthLoadAction,
             depthStoreAction,

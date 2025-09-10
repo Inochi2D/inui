@@ -23,13 +23,11 @@ private:
 @nogc:
     SDL_GPUCopyPass* handle_;
 
-protected:
+public:
     this(CommandBuffer parent, SDL_GPUCopyPass* pass) {
         super(parent);
         this.handle_ = pass;
     }
-
-public:
 
     /**
         Copies texture data from a staging buffer to a texture.
@@ -49,7 +47,7 @@ public:
             return;
 
         auto sourceInfo = SDL_GPUTextureTransferInfo(
-            source.handle,
+            cast(SDL_GPUTransferBuffer*)source.handle,
             offset,
             pixelsPerRow,
             pixelsPerRow*target.height
@@ -63,7 +61,7 @@ public:
             0,
             target.width,
             target.height,
-            0
+            1
         );
         SDL_UploadToGPUTexture(handle_, &sourceInfo, &targetInfo, true);
     }
@@ -82,16 +80,16 @@ public:
             The $(D target) must be a non-staging buffer.
     */
     void copyBufferToBuffer(Buffer target, Buffer source, uint srcOffset, uint dstOffset, uint length) {
-        if (target.target == BufferType.staging)
+        if (target.type == BufferType.staging)
             return;
         
         if (source.type == BufferType.staging) {
             auto sourceInfo = SDL_GPUTransferBufferLocation(
-                source.handle,
+                cast(SDL_GPUTransferBuffer*)source.handle,
                 srcOffset
             );
             auto targetInfo = SDL_GPUBufferRegion(
-                target.handle,
+                cast(SDL_GPUBuffer*)target.handle,
                 dstOffset,
                 length
             );
@@ -99,15 +97,13 @@ public:
             return;
         }
 
-        auto sourceInfo = SDL_GPUBufferRegion(
-            source.handle,
-            srcOffset,
-            length
+        auto sourceInfo = SDL_GPUBufferLocation(
+            cast(SDL_GPUBuffer*)source.handle,
+            srcOffset
         );
-        auto targetInfo = SDL_GPUBufferRegion(
-            target.handle,
-            dstOffset,
-            length
+        auto targetInfo = SDL_GPUBufferLocation(
+            cast(SDL_GPUBuffer*)target.handle,
+            dstOffset
         );
         SDL_CopyGPUBufferToBuffer(handle_, &sourceInfo, &targetInfo, length, true);
         return;
