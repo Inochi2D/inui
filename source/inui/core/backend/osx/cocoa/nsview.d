@@ -11,6 +11,7 @@ import inui.core.backend.osx.cocoa.nscolor;
 import inui.core.backend.osx.cocoa.nsappearance;
 import inui.core.backend.osx.cocoa.nslayout;
 import inui.core.backend.osx.cocoa.math;
+import inui.core.backend.osx.cocoa.calayer;
 
 version(OSX):
 import core.attribute : selector;
@@ -94,6 +95,12 @@ extern class NSView : NSResponder {
     */
     @property double alphaValue();
     @property void alphaValue(double value);
+
+    /**
+        CoreAnimation layer
+    */
+    @property CALayer layer();
+    @property void layer(CALayer value);
 
     /**
         Background color

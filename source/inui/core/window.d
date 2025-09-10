@@ -170,7 +170,7 @@ private:
 
     // Base SDL flags to apply.
     version(OSX)
-        enum ulong BASE_FLAGS = SDL_WindowFlags.SDL_WINDOW_HIDDEN | SDL_WindowFlags.SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WindowFlags.SDL_WINDOW_TRANSPARENT;
+        enum ulong BASE_FLAGS = SDL_WindowFlags.SDL_WINDOW_HIDDEN | SDL_WindowFlags.SDL_WINDOW_HIGH_PIXEL_DENSITY;
     else 
         enum ulong BASE_FLAGS = SDL_WindowFlags.SDL_WINDOW_HIDDEN | SDL_WindowFlags.SDL_WINDOW_HIGH_PIXEL_DENSITY;
 
@@ -642,17 +642,6 @@ public:
     */
     bool sync() {
         return SDL_SyncWindow(handle);
-    }
-
-    /**
-        Swaps the double-buffered window.
-        
-        Returns:
-            $(D true) if the operation succeeded,
-            $(D false) otherwise.
-    */
-    bool swap() {
-        return SDL_GL_SwapWindow(handle);
     }
 
     /**

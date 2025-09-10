@@ -28,6 +28,8 @@ void uiCocoaSetupVibrancy(NativeWindow window) @nogc {
     auto crect = whndl.contentRectForFrameRect(whndl.frame);
 
     NSView rootview = NSView.alloc.initWithFrame(crect);
+    rootview.backgroundColor = NSColor.clearColor;
+    sdlview.backgroundColor = NSColor.clearColor;
 
     NSVisualEffectView effectView = NSVisualEffectView.alloc.initWithFrame(rootview.frame);
     effectView.material = NSVisualEffectMaterial.WindowBackground;
@@ -41,7 +43,6 @@ void uiCocoaSetupVibrancy(NativeWindow window) @nogc {
     effectView.frame = rootview.frame;
     rootview.addSubview(sdlview);
     sdlview.frame = rootview.frame;
-    sdlview.backgroundColor = NSColor.clearColor;
     
     rootview.autoresizesSubviews = true;
     rootview.addLayoutGuide(whndl.contentLayoutGuide);
@@ -71,6 +72,13 @@ void uiCocoaUpdateWindow(NativeWindow window) @nogc {
     NSWindow whndl = cast(NSWindow)window.nativeHandle();
     if (!whndl)
         return;
+    
+    auto rootview = whndl.contentView;
+    NSView sdlView = rootview.findSDLView();
+
+    sdlView.layer.isOpaque = false;
+    sdlView.layer.backgroundColor = CGColorGetConstantColor(kCGColorClear);
+    sdlView.subviews[0].layer.isOpaque = false;
 }
 
 bool uiCocoaSetVibrancy(NativeWindow window, SystemVibrancy vibrancy) @nogc {

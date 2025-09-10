@@ -295,7 +295,6 @@ public:
         context.beginFrame(deltaTime);
             view.update(deltaTime);
         context.endFrame();
-        this.swap();
     }
 
     /**
@@ -381,15 +380,6 @@ public:
             $(D false) otherwise.
     */
     bool sync() { return backing.sync(); }
-
-    /**
-        Swaps the double-buffered window.
-        
-        Returns:
-            $(D true) if the operation succeeded,
-            $(D false) otherwise.
-    */
-    bool swap() { return backing.swap(); }
 
     /**
         Requests that the NativeWindow be closed.

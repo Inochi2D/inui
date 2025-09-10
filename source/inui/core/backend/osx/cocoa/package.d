@@ -17,3 +17,4 @@ public import inui.core.backend.osx.cocoa.nsview;
 public import inui.core.backend.osx.cocoa.nswindow;
 public import inui.core.backend.osx.cocoa.nstoolbar;
 public import inui.core.backend.osx.cocoa.nsmenu;
+public import inui.core.backend.osx.cocoa.calayer;

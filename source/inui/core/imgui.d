@@ -238,23 +238,13 @@ private:
 
         // Setup viewport, orthographic projection matrix
         // Our visible imgui space lies from draw_data.DisplayPos (top left) to draw_data.DisplayPos+data_data.DisplaySize (bottom right). DisplayPos is (0,0) for single viewport apps.
-        version(OSX) {
-            g_Uniforms.set([mat4.orthographic01(
-                drawData.DisplayPos.x,
-                drawData.DisplayPos.x + drawData.DisplaySize.x,
-                drawData.DisplayPos.y + drawData.DisplaySize.y,
-                drawData.DisplayPos.y,
-                -1, 1
-            ).transposed()]);
-        } else {
-            g_Uniforms.set([mat4.orthographic(
-                drawData.DisplayPos.x,
-                drawData.DisplayPos.x + drawData.DisplaySize.x,
-                drawData.DisplayPos.y + drawData.DisplaySize.y,
-                drawData.DisplayPos.y,
-                -1, 1
-            ).transposed()]);
-        }
+        g_Uniforms.set([mat4.orthographic01(
+            drawData.DisplayPos.x,
+            drawData.DisplayPos.x + drawData.DisplaySize.x,
+            drawData.DisplayPos.y + drawData.DisplaySize.y,
+            drawData.DisplayPos.y,
+            0, 1
+        ).transposed()]);
         g_RenderPass.viewport = fbArea;
     }
 
@@ -266,7 +256,8 @@ private:
         if (fbWidth <= 0 || fbHeight <= 0)
             return;
 
-        rect fbArea = rect(0, 0, fbWidth, fbHeight);
+        vec2i windowSize = window.ptSize;
+        rect fbArea = rect(windowSize.x-fbWidth, windowSize.y-fbHeight, fbWidth, fbHeight);
         g_Cmds = g_Queue.newCommandBuffer();
 
         // Will project scissor/clipping rectangles into framebuffer space
@@ -362,7 +353,6 @@ private:
                         // Bind texture, Draw
                         g_RenderPass.setFragmentTexture(0, texture, g_Sampler);
                         g_RenderPass.setVertexBuffer(0, g_Uniforms);
-                        g_RenderPass.setFragmentBuffer(0, g_Uniforms);
                         g_RenderPass.setVertexBuffer(0, g_VtxBuffers[n]);
                         g_RenderPass.setIndexBuffer(g_IdxBuffers[n], ImDrawIdx.sizeof == 2 ? IndexType.uint16 : IndexType.uint32);
                         g_RenderPass.drawIndexed(pcmd.ElemCount, pcmd.IdxOffset, pcmd.VtxOffset);

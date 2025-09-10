@@ -8,7 +8,7 @@ struct Uniforms {
 struct VertexIn {
     float2 position  [[attribute(0)]];
     float2 texCoords [[attribute(1)]];
-    uchar4 color     [[attribute(2)]];
+    float4 color     [[attribute(2)]];
 };
 
 struct VertexOut {
@@ -20,9 +20,9 @@ struct VertexOut {
 vertex VertexOut vertex_main(VertexIn in                 [[stage_in]],
                              constant Uniforms &uniforms [[buffer(0)]]) {
     VertexOut out;
-    out.position = uniforms.projectionMatrix * float4(in.position, 1, 1);
+    out.position = uniforms.projectionMatrix * float4(in.position, 1.5, 1);
     out.texCoords = in.texCoords;
-    out.color = float4(in.color) / float4(255.0);
+    out.color = in.color;
     return out;
 }
 
@@ -31,5 +31,5 @@ fragment float4 fragment_main(VertexOut in [[stage_in]],
                              sampler samplerIn [[sampler(0)]]) {
 
     float4 texColor = textureIn.sample(samplerIn, in.texCoords);
-    return in.color * texColor;
+    return textureIn.sample(samplerIn, in.texCoords) * in.color;
 }

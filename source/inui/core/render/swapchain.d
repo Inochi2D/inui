@@ -10,7 +10,8 @@ module inui.core.render.swapchain;
 import inui.core.render.cmdbuffer;
 import inui.core.render.texture;
 import inui.core.render.device;
-import sdl.video : SDL_Window;
+import inui.core.render.eh;
+import sdl.video;
 import sdl.gpu;
 import nulib;
 import numem;
@@ -30,18 +31,9 @@ enum PresentMode : SDL_GPUPresentMode {
 class Swapchain : GPUObject {
 private:
 @nogc:
-    SDL_GPUSwapchainComposition compositionFlags;
-    PresentMode presentMode;
+    SDL_GPUSwapchainComposition compositionFlags = SDL_GPUSwapchainComposition.SDL_GPU_SWAPCHAINCOMPOSITION_SDR;
+    PresentMode presentMode = PresentMode.vsync;
     SDL_Window* handle_;
-
-    // Checks whether the given window can be claimed.
-    bool checkCanClaim(SDL_Window* window) {
-        if (SDL_ClaimWindowForGPUDevice(gpuHandle, window)) {
-            SDL_ReleaseWindowFromGPUDevice(gpuHandle, window);
-            return true;
-        }
-        return false;
-    }
 
 public:
 
@@ -111,8 +103,7 @@ public:
         super(device);
         this.handle_ = window;
 
-        enforce(checkCanClaim(window), "Can't claim window for rendering context.");
-        SDL_ClaimWindowForGPUDevice(gpuHandle, handle_);
+        enforceSDL(SDL_ClaimWindowForGPUDevice(gpuHandle, handle_));
     }
 
     /**

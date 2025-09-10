@@ -194,12 +194,17 @@ private:
                 
                 switch(ev.type) {
                     case SDL_EventType.SDL_EVENT_QUIT:
-                        mainWindow_.close();
+                        if (mainWindow_)
+                            mainWindow_.close();
                         break;
 
                     case SDL_EventType.SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-                        if (auto window = NativeWindow.fromID(ev.window.windowID)) {
-                            nogc_delete(window);
+                        if (auto nativeWindow = Window.fromID(ev.window.windowID)) {
+                            destroy(nativeWindow);
+
+                            if (mainWindow_ is nativeWindow) {
+                                mainWindow_ = null;
+                            }
                         }
                         break;
 

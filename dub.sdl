@@ -44,8 +44,9 @@ configuration "macOS" {
 	lflags "-framework" "Cocoa"
 
 	dependency "objective-d" version=">=1.1.1"
+	dependency "coregraphics-d" version=">=0.5.2"
 	subConfiguration "i2d-imgui" "dynamic_dynamicCRT"
 
 	preBuildCommands \
-		"mv shaders/ui.metal res/shaders/ui.metal"
+		"cp shaders/ui.metal res/shaders/ui.metal"
 }
