@@ -18,7 +18,7 @@ struct VertexOut {
 };
 
 vertex VertexOut vertex_main(VertexIn in                 [[stage_in]],
-                             constant Uniforms &uniforms [[buffer(1)]]) {
+                             constant Uniforms &uniforms [[buffer(0)]]) {
     VertexOut out;
     out.position = uniforms.projectionMatrix * float4(in.position, 1, 1);
     out.texCoords = in.texCoords;
@@ -27,9 +27,9 @@ vertex VertexOut vertex_main(VertexIn in                 [[stage_in]],
 }
 
 fragment float4 fragment_main(VertexOut in [[stage_in]],
-                             texture2d<float, access::sample> texture [[texture(0)]]) {
-    constexpr sampler linearSampler(coord::normalized, min_filter::linear, mag_filter::linear, mip_filter::linear);
+                             texture2d<float, access::sample> textureIn [[texture(0)]],
+                             sampler samplerIn [[sampler(0)]]) {
 
-    float4 texColor = texture.sample(linearSampler, in.texCoords);
+    float4 texColor = textureIn.sample(samplerIn, in.texCoords);
     return in.color * texColor;
 }
