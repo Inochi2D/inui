@@ -19,4 +19,5 @@ public import inui.core.render.gpucache;
 public import inui.core.render.pipeline;
 public import inui.core.render.renderencoder;
 public import inui.core.render.transferencoder;
+public import inui.core.render.staging;
 public import inui.core.render.eh;

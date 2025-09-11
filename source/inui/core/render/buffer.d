@@ -51,9 +51,6 @@ private:
                     &createInfo
                 );
 
-            case BufferType.uniform:
-                return nu_malloc(desc.size);
-
             case BufferType.vertex:
             case BufferType.index:
                 auto createInfo = SDL_GPUBufferCreateInfo(
@@ -65,32 +62,34 @@ private:
                     gpuHandle, 
                     &createInfo
                 );
+
+            case BufferType.uniform:
+                return nu_malloc(desc.size);
             
             default:
                 return null;
         }
     }
 
-    void destroyBuffer(BufferType type, ref void* handle) {
+    void destroyBuffer(BufferType type) {
         switch(type) {
-            case BufferType.uniform:
-                nu_free(handle_);
-                handle_ = null;
-                break;
-
             case BufferType.staging:
-                SDL_ReleaseGPUTransferBuffer(gpuHandle, cast(SDL_GPUTransferBuffer*)handle);
+                SDL_ReleaseGPUTransferBuffer(gpuHandle, cast(SDL_GPUTransferBuffer*)handle_);
                 break;
 
             case BufferType.vertex:
             case BufferType.index:
-                SDL_ReleaseGPUBuffer(gpuHandle, cast(SDL_GPUBuffer*)handle);
+                SDL_ReleaseGPUBuffer(gpuHandle, cast(SDL_GPUBuffer*)handle_);
+                break;
+            
+            case BufferType.uniform:
+                nu_free(handle_);
                 break;
             
             default:
                 break;
         }
-        handle = null;
+        this.handle_ = null;
     }
 
 public:
@@ -112,7 +111,7 @@ public:
 
     // Destructor
     ~this() {
-        this.destroyBuffer(desc.type, handle_);
+        this.destroyBuffer(desc.type);
     }
 
     /**
@@ -135,56 +134,38 @@ public:
             newSize = The new size of the buffer.
     */
     void resize(uint newSize) {
-        this.destroyBuffer(type, handle_);
-        desc.size = newSize;
+        this.destroyBuffer(type);
+        this.desc.size = newSize;
         this.handle_ = this.createBuffer(desc);
     }
 
     /**
-        Maps the buffer into system visible memory.
-        
-        Returns:
-            The mapped buffer region as a slice,
-            returns an empty slice for non-staging buffers.
+        Sets the content of the buffer, either directly or by using the
+        device's staging buffer queue.
 
-        Notes:
-            The buffer MUST be either a uniform or staging buffer.
+        Params:
+            data =      The data to upload to the buffer.
+            offset =    The offset to upload the data at.
     */
-    void[] map() {
-        if (desc.type == BufferType.staging)
-            return SDL_MapGPUTransferBuffer(gpuHandle, cast(SDL_GPUTransferBuffer*)handle_, true)[0..desc.size];
-        
-        if (desc.type == BufferType.uniform)
-            return handle_[0..desc.size];
-
-        return null;
-    }
-
-    /**
-        Unmaps the buffer.
-    */
-    void unmap() {
-        if (desc.type != BufferType.staging)
-            return;
-        
-        SDL_UnmapGPUTransferBuffer(gpuHandle, cast(SDL_GPUTransferBuffer*)handle_);
-    }
-
-    /**
-        
-        Notes:
-            The buffer MUST be either a uniform or staging buffer.
-    */
-    void set(void[] data) {
+    void set(void[] data, uint offset = 0) {
         import nulib.math : min;
         
         if (data.length == 0)
             return;
+        
+        switch(desc.type) {
+            case BufferType.staging:
+                auto mapped = SDL_MapGPUTransferBuffer(gpuHandle, cast(SDL_GPUTransferBuffer*)handle_, true)[0..desc.size];
+                    size_t toSet = min(data.length, mapped.length);
+                    mapped[offset..offset+toSet] = data[0..toSet];
+                SDL_UnmapGPUTransferBuffer(gpuHandle, cast(SDL_GPUTransferBuffer*)handle_);
+                break;
+            
+            default:
+                device.staging.enqueue(this, data, offset);
+                break;
 
-        auto mapped = map();
-        size_t toSet = min(data.length, mapped.length);
-        mapped[0..toSet] = data[0..toSet];
-        this.unmap();
+        }
     }
 }
 

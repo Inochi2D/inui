@@ -15,12 +15,13 @@ import inui.core.render.cmdqueue;
 import inui.core.render.gpucache;
 import inui.core.render.swapchain;
 import inui.core.render.texture;
+import inui.core.render.staging;
 import inui.core.render.buffer;
 import inui.core.render.shader;
 import inui.core.render.eh;
 
 /**
-    A device that can render 3D graphics to the screen
+    A device that can render 3D graphics to the screen.
 */
 class RenderingDevice : NuRefCounted {
 private:
@@ -28,7 +29,8 @@ private:
     SDL_GPUDevice* handle_;
     Swapchain swapchain_;
     GPUPipelineCache pipelines_;
-
+    StagingBuffer staging_;
+    
 public:
 
     /**
@@ -42,6 +44,11 @@ public:
     final @property Swapchain swapchain() => swapchain_;
 
     /**
+        The device's internal staging buffer.
+    */
+    final @property StagingBuffer staging() => staging_;
+
+    /**
         The device's shader pipeline cache.
     */
     final @property GPUPipelineCache pipelineCache() => pipelines_;
@@ -50,6 +57,7 @@ public:
     ~this() {
         nogc_delete(swapchain_);
         nogc_delete(pipelines_);
+        nogc_delete(staging_);
         SDL_DestroyGPUDevice(handle_);
     }
 
@@ -70,6 +78,7 @@ public:
     this() {
         this.handle_ = enforceSDL(SDL_CreateGPUDevice(SDL_SHADER_FORMAT, DEBUG_MODE, null));
         this.pipelines_ = nogc_new!GPUPipelineCache(this);
+        this.staging_ = nogc_new!StagingBuffer(this);
     }
 
     /**
@@ -143,6 +152,13 @@ public:
     */
     Shader createShader(ShaderDescriptor desc) {
         return nogc_new!Shader(this, desc);
+    }
+
+    /**
+        Flushes any pending staging requests for the device.
+    */
+    void flush() {
+        staging_.flush();
     }
 }
 

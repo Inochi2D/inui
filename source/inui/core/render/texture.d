@@ -104,6 +104,18 @@ public:
         this.desc.height = height;
         this.desc.mipLevels = 1;
     }
+
+    /**
+        Uploads data to the texture using the device's staging buffer
+        queue.
+
+        Params:
+            data =      The data to upload
+            mipLevel =  The mipmap level to upload the data to.
+    */
+    void upload(void[] data, uint mipLevel = 0) {
+        device.staging.enqueue(this, data, mipLevel);
+    }
 }
 
 /**

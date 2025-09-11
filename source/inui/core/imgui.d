@@ -139,11 +139,8 @@ private:
     CommandBuffer g_Cmds;
     RenderCommandEncoder g_RenderPass;
     TransferCommandEncoder g_TxrPass;
-    BufferCache g_VtxBufCache;
-    BufferCache g_IdxBufCache;
-    BufferCache g_TxrBufferCache;
-    Buffer[] g_IdxBuffers;
-    Buffer[] g_VtxBuffers;
+    Buffer g_IdxBuffer;
+    Buffer g_VtxBuffer;
     Buffer g_Uniforms;
     Sampler g_Sampler;
     RenderPipeline g_Pipeline;
@@ -166,9 +163,15 @@ private:
             )
         );
 
-        g_VtxBufCache = nogc_new!BufferCache(window.renderer, BufferType.vertex);
-        g_IdxBufCache = nogc_new!BufferCache(window.renderer, BufferType.index);
-        g_TxrBufferCache = nogc_new!BufferCache(window.renderer, BufferType.staging);
+        g_VtxBuffer = window.renderer.createBuffer(BufferDescriptor(
+            BufferType.vertex,
+            ushort.max * ImDrawVert.sizeof
+        ));
+
+        g_IdxBuffer = window.renderer.createBuffer(BufferDescriptor(
+            BufferType.index,
+            ushort.max * ImDrawIdx.sizeof
+        ));
 
         version(OSX) {
             Shader vertexShader = window.renderer.createShader(
@@ -226,12 +229,8 @@ private:
     }
 
     void destroyDeviceObjects() {
-        g_VtxBufCache.release();
-        g_IdxBufCache.release();
-        g_TxrBufferCache.release();
-
-        g_VtxBufCache = null;
-        g_IdxBufCache = null;
+        g_VtxBuffer.release();
+        g_IdxBuffer.release();
     }
 
     void setupRenderState(ImDrawData* drawData, rect fbArea) {
@@ -258,7 +257,6 @@ private:
 
         vec2i windowSize = window.ptSize;
         rect fbArea = rect(windowSize.x-fbWidth, windowSize.y-fbHeight, fbWidth, fbHeight);
-        g_Cmds = g_Queue.newCommandBuffer();
 
         // Will project scissor/clipping rectangles into framebuffer space
         ImVec2 clip_off = ImVec2(
@@ -272,34 +270,30 @@ private:
         ); // (1,1) unless using retina display which are often (2,2)
 
         // Fill buffers.
-        g_IdxBuffers.length = drawData.CmdListsCount;
-        g_VtxBuffers.length = drawData.CmdListsCount;
-        Buffer g_TxrBufferVtx;
-        Buffer g_TxrBufferIdx;
-        g_TxrPass = g_Cmds.beginTransferPass();
-            foreach(n; 0..drawData.CmdListsCount) {
-                const ImDrawList* cmdList = drawData.CmdLists[n];
-                g_TxrBufferVtx = g_TxrBufferCache.dequeueBuffer(cast(uint)(cmdList.VtxBuffer.Size * ImDrawVert.sizeof));
-                g_TxrBufferIdx = g_TxrBufferCache.dequeueBuffer(cast(uint)(cmdList.IdxBuffer.Size * ImDrawIdx.sizeof));
-                g_VtxBuffers[n] = g_VtxBufCache.dequeueBuffer(cast(uint)(cmdList.VtxBuffer.Size * ImDrawVert.sizeof));
-                g_IdxBuffers[n] = g_IdxBufCache.dequeueBuffer(cast(uint)(cmdList.IdxBuffer.Size * ImDrawIdx.sizeof));
-                
-                // Upload vertex/index buffers
-                g_TxrBufferVtx.set(cast(void[])cmdList.VtxBuffer.Data[0..cmdList.VtxBuffer.Size]);
-                g_TxrBufferIdx.set(cast(void[])cmdList.IdxBuffer.Data[0..cmdList.IdxBuffer.Size]);
+        if (g_VtxBuffer.size < drawData.TotalVtxCount * ImDrawVert.sizeof)
+            g_VtxBuffer.resize(cast(uint)(drawData.TotalVtxCount * ImDrawVert.sizeof));
+        if (g_IdxBuffer.size < drawData.TotalIdxCount * ImDrawIdx.sizeof)
+            g_IdxBuffer.resize(cast(uint)(drawData.TotalIdxCount * ImDrawIdx.sizeof));
+        
+        uint vtxI = 0;
+        uint idxI = 0;
+        foreach(n; 0..drawData.CmdListsCount) {
+            const ImDrawList* cmd_list = drawData.CmdLists[n];
+            g_VtxBuffer.set(cast(void[])cmd_list.VtxBuffer.Data[0..cmd_list.VtxBuffer.Size], vtxI);
+            g_IdxBuffer.set(cast(void[])cmd_list.IdxBuffer.Data[0..cmd_list.IdxBuffer.Size], idxI);
+            vtxI += (cmd_list.VtxBuffer.Size * ImDrawVert.sizeof);
+            idxI += (cmd_list.IdxBuffer.Size * ImDrawIdx.sizeof);
+        }
 
-                g_TxrPass.copyBufferToBuffer(g_VtxBuffers[n], g_TxrBufferVtx, 0, 0, cast(uint)(cmdList.VtxBuffer.Size * ImDrawVert.sizeof));
-                g_TxrPass.copyBufferToBuffer(g_IdxBuffers[n], g_TxrBufferIdx, 0, 0, cast(uint)(cmdList.IdxBuffer.Size * ImDrawIdx.sizeof));
+        if (drawData.Textures !is null) {
+            foreach(ImTextureData* texture; drawData.Textures.Data[0..drawData.Textures.size()]) {
+                if (texture.Status != ImTextureStatus.OK)
+                    this.updateTexture(texture);
             }
+        }
+        window.renderer.flush();
+        g_Cmds = g_Queue.newCommandBuffer();
 
-            if (drawData.Textures !is null) {
-                foreach(ImTextureData* texture; drawData.Textures.Data[0..drawData.Textures.size()]) {
-                    if (texture.Status != ImTextureStatus.OK)
-                        this.updateTexture(texture);
-                }
-            }
-        g_TxrPass.end();
-            
         // Setup desired state
         g_RenderPass = g_Cmds.beginRenderPass(RenderPassDescriptor([
                 ColorAttachmentDescriptor(g_Cmds.acquireSwapchainTexture(), LoadAction.clear, StoreAction.store, vec4(0, 0, 0, 0))
@@ -315,6 +309,8 @@ private:
         this.setupRenderState(drawData, fbArea);
 
         // Render command lists
+        vtxI = 0;
+        idxI = 0;
         for (int n = 0; n < drawData.CmdListsCount; n++) {
             const ImDrawList* cmd_list = drawData.CmdLists[n];
 
@@ -353,12 +349,16 @@ private:
                         // Bind texture, Draw
                         g_RenderPass.setFragmentTexture(0, texture, g_Sampler);
                         g_RenderPass.setVertexBuffer(0, g_Uniforms);
-                        g_RenderPass.setVertexBuffer(0, g_VtxBuffers[n]);
-                        g_RenderPass.setIndexBuffer(g_IdxBuffers[n], ImDrawIdx.sizeof == 2 ? IndexType.uint16 : IndexType.uint32);
+                        g_RenderPass.setVertexBuffer(0, g_VtxBuffer, vtxI);
+                        g_RenderPass.setIndexBuffer(g_IdxBuffer, ImDrawIdx.sizeof == 2 ? IndexType.uint16 : IndexType.uint32, idxI);
                         g_RenderPass.drawIndexed(pcmd.ElemCount, pcmd.IdxOffset, pcmd.VtxOffset);
                     }
                 }
             }
+
+                        
+            vtxI += (cmd_list.VtxBuffer.Size * ImDrawVert.sizeof);
+            idxI += (cmd_list.IdxBuffer.Size * ImDrawIdx.sizeof);
         }
 
         g_RenderPass.end();
@@ -372,19 +372,15 @@ private:
             Texture2D toUpdate = window.renderer.createTexture(
                 TextureDescriptor(TextureFormat.rgba8Unorm, texture.Width, texture.Height, 1)
             );
-            auto g_TxrBuffer = g_TxrBufferCache.dequeueBuffer(toUpdate.byteLength);
 
-            g_TxrBuffer.set(pixels);
-            g_TxrPass.copyBufferToTexture(toUpdate, g_TxrBuffer, 0, texture.Width, 0);
+            toUpdate.upload(pixels, 0);
             ImTextureData_SetTexID(texture, cast(ImTextureID)cast(void*)toUpdate);
             ImTextureData_SetStatus(texture, ImTextureStatus.OK);
         } else if (texture.Status == ImTextureStatus.WantUpdates) {
-            Texture2D toUpdate = cast(Texture2D)(cast(void*)ImTextureData_GetTexID(texture));
-            Buffer g_TxrBuffer = g_TxrBufferCache.dequeueBuffer(toUpdate.byteLength);
-
             void[] pixels = (cast(void*)ImTextureData_GetPixels(texture))[0..ImTextureData_GetSizeInBytes(texture)];
-            g_TxrBuffer.set(pixels);
-            g_TxrPass.copyBufferToTexture(toUpdate, g_TxrBuffer, 0, texture.Width, 0);
+            Texture2D toUpdate = cast(Texture2D)(cast(void*)ImTextureData_GetTexID(texture));
+
+            toUpdate.upload(pixels, 0);
             ImTextureData_SetStatus(texture, ImTextureStatus.OK);
         } else if (texture.Status == ImTextureStatus.WantDestroy && texture.UnusedFrames > 0) {
             Texture2D toUpdate = cast(Texture2D)(cast(void*)ImTextureData_GetTexID(texture));
