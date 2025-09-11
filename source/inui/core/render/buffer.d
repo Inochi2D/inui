@@ -161,6 +161,13 @@ public:
                 SDL_UnmapGPUTransferBuffer(gpuHandle, cast(SDL_GPUTransferBuffer*)handle_);
                 break;
             
+            case BufferType.uniform:
+                auto mapped = handle_[0..desc.size];
+                
+                size_t toSet = min(data.length, mapped.length);
+                mapped[offset..offset+toSet] = data[0..toSet];
+                break;
+
             default:
                 device.staging.enqueue(this, data, offset);
                 break;

@@ -462,8 +462,7 @@ public:
     this(SDL_Window* handle) {
         assert(handle, "Failed creating NativeWindow handle");
         this.handle = handle;
-        this.context_ = nogc_new!RenderingDevice();
-        this.context_.attachTo(handle);
+        this.context_ = nogc_new!RenderingDevice(handle);
         this.runOsInitHooks();
         
         windows_ ~= this;

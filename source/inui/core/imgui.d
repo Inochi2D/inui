@@ -138,7 +138,6 @@ private:
     CommandQueue g_Queue;
     CommandBuffer g_Cmds;
     RenderCommandEncoder g_RenderPass;
-    TransferCommandEncoder g_TxrPass;
     Buffer g_IdxBuffer;
     Buffer g_VtxBuffer;
     Buffer g_Uniforms;
@@ -229,6 +228,9 @@ private:
     }
 
     void destroyDeviceObjects() {
+        g_Pipeline.release();
+        g_Sampler.release();
+        g_Uniforms.release();
         g_VtxBuffer.release();
         g_IdxBuffer.release();
     }
@@ -291,6 +293,7 @@ private:
                     this.updateTexture(texture);
             }
         }
+
         window.renderer.flush();
         g_Cmds = g_Queue.newCommandBuffer();
 
@@ -355,7 +358,6 @@ private:
                     }
                 }
             }
-
                         
             vtxI += (cmd_list.VtxBuffer.Size * ImDrawVert.sizeof);
             idxI += (cmd_list.IdxBuffer.Size * ImDrawIdx.sizeof);
