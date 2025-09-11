@@ -138,7 +138,6 @@ public:
                 );
 
                 SDL_UploadToGPUTexture(pass, &sourceInfo, &targetInfo, false);
-                
             }
             
             // Buffer
@@ -148,9 +147,9 @@ public:
 
                 bufTxrBuffer_.set(request.data);
 
-                size_t copyPasses = max(1, (request.offset+request.data.length)/bufTxrBuffer_.size);
+                size_t copyPasses = max(1, request.data.length/bufTxrBuffer_.size);
                 foreach(i; 0..copyPasses) {
-                    size_t start = request.offset+(bufTxrBuffer_.size * i);
+                    size_t start = (bufTxrBuffer_.size * i);
                     size_t length = min(bufTxrBuffer_.size, request.data.length-start);
 
                     auto sourceInfo = SDL_GPUTransferBufferLocation(
