@@ -106,6 +106,27 @@ public:
         
         SDL_GenerateMipmapsForGPUTexture(handle_, texture.handle);
     }
+
+    /**
+        Cancels the command buffer.
+
+        This cannot be done if a swapchain texture was acquired.
+
+        Returns:
+            $(D true) if the buffer was canceled,
+            $(D false) otherwise.
+    */
+    bool cancel() {
+        if (swapchainTexture)
+            return false;
+        
+        bool canceled = SDL_CancelGPUCommandBuffer(handle_);
+        if (canceled) {
+            auto self = this;
+            nogc_delete(self);
+        }
+        return canceled;
+    }
 }
 
 /**

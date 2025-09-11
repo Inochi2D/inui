@@ -20,6 +20,7 @@ import nulib;
 import sdl;
 import sdl.misc : SDL_OpenURL;
 import sdl.error : SDL_GetError;
+import sdl.timer : SDL_DelayPrecise;
 
 import std.stdio : printf;
 
@@ -295,77 +296,84 @@ private:
         }
 
         window.renderer.flush();
+
         g_Cmds = g_Queue.newCommandBuffer();
+        if (auto swapchainTexture = g_Cmds.acquireSwapchainTexture()) {
 
-        // Setup desired state
-        g_RenderPass = g_Cmds.beginRenderPass(RenderPassDescriptor([
-                ColorAttachmentDescriptor(g_Cmds.acquireSwapchainTexture(), LoadAction.clear, StoreAction.store, vec4(0, 0, 0, 0))
-            ]
-        ));
+            // Setup desired state
+            g_RenderPass = g_Cmds.beginRenderPass(RenderPassDescriptor([
+                    ColorAttachmentDescriptor(swapchainTexture, LoadAction.clear, StoreAction.store, vec4(0, 0, 0, 0))
+                ]
+            ));
 
-        g_RenderPass.setRenderPipeline(g_Pipeline);
-        g_RenderPass.cullMode = CullMode.none;
-        g_RenderPass.srcColorFactor = BlendFactor.srcAlpha;
-        g_RenderPass.srcAlphaFactor = BlendFactor.srcAlpha;
-        g_RenderPass.dstColorFactor = BlendFactor.oneMinusSrcAlpha;
-        g_RenderPass.dstAlphaFactor = BlendFactor.oneMinusSrcAlpha;
-        this.setupRenderState(drawData, fbArea);
+            g_RenderPass.setRenderPipeline(g_Pipeline);
+            g_RenderPass.cullMode = CullMode.none;
+            g_RenderPass.srcColorFactor = BlendFactor.srcAlpha;
+            g_RenderPass.srcAlphaFactor = BlendFactor.srcAlpha;
+            g_RenderPass.dstColorFactor = BlendFactor.oneMinusSrcAlpha;
+            g_RenderPass.dstAlphaFactor = BlendFactor.oneMinusSrcAlpha;
+            this.setupRenderState(drawData, fbArea);
 
-        // Render command lists
-        vtxI = 0;
-        idxI = 0;
-        for (int n = 0; n < drawData.CmdListsCount; n++) {
-            const ImDrawList* cmd_list = drawData.CmdLists[n];
+            // Render command lists
+            vtxI = 0;
+            idxI = 0;
+            for (int n = 0; n < drawData.CmdListsCount; n++) {
+                const ImDrawList* cmd_list = drawData.CmdLists[n];
 
-            for (int cmd_i = 0; cmd_i < cmd_list.CmdBuffer.Size; cmd_i++) {
-                const(ImDrawCmd)* pcmd = &cmd_list.CmdBuffer.Data[cmd_i];
-                if (pcmd.UserCallback != null) {
-                    // User callback, registered via ImDrawList::AddCallback()
-                    // (ImDrawCallback_ResetRenderState is a special callback value used by the user to request the renderer to reset render state.)
-                    if (pcmd.UserCallback == cast(ImDrawCallback)(-1))
-                        this.setupRenderState(drawData, fbArea);
-                    else
-                        pcmd.UserCallback(cmd_list, pcmd);
-                } else {
-                    // Project scissor/clipping rectangles into framebuffer space
-                    ImVec4 clipRect;
-                    clipRect.x = (pcmd.ClipRect.x + clip_off.x) * clip_scale.x;
-                    clipRect.y = (pcmd.ClipRect.y + clip_off.y) * clip_scale.y;
-                    clipRect.z = (pcmd.ClipRect.z + clip_off.x) * clip_scale.x;
-                    clipRect.w = (pcmd.ClipRect.w + clip_off.y) * clip_scale.y;
+                for (int cmd_i = 0; cmd_i < cmd_list.CmdBuffer.Size; cmd_i++) {
+                    const(ImDrawCmd)* pcmd = &cmd_list.CmdBuffer.Data[cmd_i];
+                    if (pcmd.UserCallback != null) {
+                        // User callback, registered via ImDrawList::AddCallback()
+                        // (ImDrawCallback_ResetRenderState is a special callback value used by the user to request the renderer to reset render state.)
+                        if (pcmd.UserCallback == cast(ImDrawCallback)(-1))
+                            this.setupRenderState(drawData, fbArea);
+                        else
+                            pcmd.UserCallback(cmd_list, pcmd);
+                    } else {
+                        // Project scissor/clipping rectangles into framebuffer space
+                        ImVec4 clipRect;
+                        clipRect.x = (pcmd.ClipRect.x + clip_off.x) * clip_scale.x;
+                        clipRect.y = (pcmd.ClipRect.y + clip_off.y) * clip_scale.y;
+                        clipRect.z = (pcmd.ClipRect.z + clip_off.x) * clip_scale.x;
+                        clipRect.w = (pcmd.ClipRect.w + clip_off.y) * clip_scale.y;
 
-                    if (clipRect.x < fbWidth && clipRect.y < fbHeight && clipRect.z >= 0.0f && clipRect.w >= 0.0f) {
-                        // Apply scissor/clipping rectangle
-                        g_RenderPass.scissor = recti(
-                            cast(int)clipRect.x, 
-                            cast(int)clipRect.y, 
-                            cast(int)(clipRect.z - clipRect.x), 
-                            cast(int)(clipRect.w - clipRect.y)
-                        );
+                        if (clipRect.x < fbWidth && clipRect.y < fbHeight && clipRect.z >= 0.0f && clipRect.w >= 0.0f) {
+                            // Apply scissor/clipping rectangle
+                            g_RenderPass.scissor = recti(
+                                cast(int)clipRect.x, 
+                                cast(int)clipRect.y, 
+                                cast(int)(clipRect.z - clipRect.x), 
+                                cast(int)(clipRect.w - clipRect.y)
+                            );
 
-                        // Will not validate in Metal.
-                        if (pcmd.ElemCount == 0)
-                            continue;
+                            // Will not validate in Metal.
+                            if (pcmd.ElemCount == 0)
+                                continue;
 
-                        Texture2D texture = cast(Texture2D)cast(void*)ImTextureRef_GetTexID(cast(ImTextureRef*)&pcmd.TexRef);
+                            Texture2D texture = cast(Texture2D)cast(void*)ImTextureRef_GetTexID(cast(ImTextureRef*)&pcmd.TexRef);
 
-                        // Bind texture, Draw
-                        g_RenderPass.setFragmentTexture(0, texture, g_Sampler);
-                        g_RenderPass.setVertexBuffer(0, g_Uniforms);
-                        g_RenderPass.setVertexBuffer(0, g_VtxBuffer, vtxI);
-                        g_RenderPass.setIndexBuffer(g_IdxBuffer, ImDrawIdx.sizeof == 2 ? IndexType.uint16 : IndexType.uint32, idxI);
-                        g_RenderPass.drawIndexed(pcmd.ElemCount, pcmd.IdxOffset, pcmd.VtxOffset);
+                            // Bind texture, Draw
+                            g_RenderPass.setFragmentTexture(0, texture, g_Sampler);
+                            g_RenderPass.setVertexBuffer(0, g_Uniforms);
+                            g_RenderPass.setVertexBuffer(0, g_VtxBuffer, vtxI);
+                            g_RenderPass.setIndexBuffer(g_IdxBuffer, ImDrawIdx.sizeof == 2 ? IndexType.uint16 : IndexType.uint32, idxI);
+                            g_RenderPass.drawIndexed(pcmd.ElemCount, pcmd.IdxOffset, pcmd.VtxOffset);
+                        }
                     }
                 }
+                            
+                vtxI += (cmd_list.VtxBuffer.Size * ImDrawVert.sizeof);
+                idxI += (cmd_list.IdxBuffer.Size * ImDrawIdx.sizeof);
             }
-                        
-            vtxI += (cmd_list.VtxBuffer.Size * ImDrawVert.sizeof);
-            idxI += (cmd_list.IdxBuffer.Size * ImDrawIdx.sizeof);
-        }
 
-        g_RenderPass.end();
-        g_Queue.submit(g_Cmds);
-        g_Queue.awaitCompletion();
+            g_RenderPass.end();
+            g_Queue.submit(g_Cmds);
+            g_Queue.awaitCompletion();
+        } else {
+            g_Cmds.cancel();
+        }
+        
+        SDL_DelayPrecise(100_000);
     }
 
     void updateTexture(ImTextureData* texture) {

@@ -126,7 +126,7 @@ public:
         SDL_GPUTexture* tex;
         uint width;
         uint height;
-        bool succeeded = SDL_WaitAndAcquireGPUSwapchainTexture(buffer.handle, handle_, &tex, &width, &height);
+        bool succeeded = SDL_AcquireGPUSwapchainTexture(buffer.handle, handle_, &tex, &width, &height);
         return succeeded && tex ? 
             nogc_new!Texture2D(device, tex, device.swapchain.textureFormat, width, height) :
             null;
