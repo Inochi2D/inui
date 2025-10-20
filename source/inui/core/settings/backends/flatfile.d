@@ -10,7 +10,11 @@
 */
 module inui.core.settings.backends.flatfile;
 import inui.core.settings;
+import inui.core.msgbox;
+import inui.app;
 import std.json;
+import std.file : rename, exists, readText, write;
+import std.path : buildPath;
 version(linux):
 
 /**
@@ -26,39 +30,32 @@ class FlatFileSettingsStore : SettingsStore {
 private:
     __gshared JSONValue settingsStore;
 
+    @property string settingsFile() => buildPath("$XDG_HOME", ".config", storeId);
+
     string moveCorruptedFile() {
         import std.datetime;
 
         // move the corrupted settings file to a new location
-        string backupPath = AppSettings.settingsFile ~ "." ~ Clock.currTime().toISOString();
-        rename(this.settingsFile, backupPath);
+        string backupPath = settingsFile ~ "." ~ Clock.currTime().toISOString();
+        rename(settingsFile, backupPath);
         return backupPath;
     }
 
     void load() {
-        try {
-            if (settingsFile.exists()) {
-                settingsStore = parseJSON(readText(settingsFile));
-            }
-        } catch (Exception ex) {
-            MessageBox.show(MessageType.error, _("Error"), _(APP_LOAD_ERROR_STRING).format(this.moveCorruptedFile(), ex.msg()));
+        if (settingsFile.exists) {
+            settingsStore = parseJSON(readText(settingsFile));
+        } else {
+            settingsStore = JSONValue.emptyObject;
         }
-
-        // This code is used to configure default values for new users
-        // New users use MousePosition, old users keep ScreenCenter
-
-        // File Handling
-        // Always ask the user whether to preserve the folder structure during import
-        // also see incGetKeepLayerFolder()
-        settings["KeepLayerFolder"] = "Ask";
     }
 
     void save() {
+        string settingsFile = Application.thisApp.settings.settingsFile;
 
         // using swp prevent file corruption
-        string swapPath = AppSettings.settingsFile ~ ".swp";
+        string swapPath = settingsFile ~ ".swp";
         write(swapPath, settingsStore.toString());
-        rename(swapPath, AppSettings.settingsFile);
+        rename(swapPath, settingsFile);
     }
 
 protected:
@@ -109,7 +106,7 @@ protected:
     }
     
     override
-    JSONValue getJSONImpl(string name) {
+    JSONValue getJSONImpl(string name, JSONValue defaultValue) {
         if (name !in settingsStore)
             return defaultValue;
         
@@ -168,6 +165,7 @@ public:
     override
     bool unset(string name) {
         settingsStore[name] = null;
+        return true;
     }
 
     /**
@@ -175,6 +173,6 @@ public:
     */
     override
     bool has(string name) {
-        return name in settingsStore;
+        return (name in settingsStore) !is null;
     }
 }
