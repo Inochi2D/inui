@@ -1,18 +1,26 @@
 # Dub Junk
-.dub/
-dub.selections.json
-__dummy_docs/
+.dub
 docs.json
 __dummy.html
+docs/
+*.exe
+*.pdb
+*.o
+*.obj
+*.lst
 
-# Random Junk
-.vscode/
-.DS_Store
-
-# Output Artifacts
+# Outputs
 out/
-res/shaders/*
-!.keep
-
-# Testing
+dub.selections.json
+__dummy_docs/
 test/
+
+# Redub Junk
+.ldc2_cache
+
+# Other Junk
+.DS_Store
+.vscode/
+
+# Output examples
+*.png
