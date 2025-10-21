@@ -4,12 +4,13 @@ authors "Luna"
 copyright "Copyright © 2022, Luna"
 license "BSD 2-clause"
 
-dependency "hairetsu" version="~i2d08"
+dependency "hairetsu" path="../../hairetsu"
 dependency "sdl-d" version=">=3.2.0"
 // dependency "i18n-d" version="~>1.0.2"
-dependency "i2d-imgui" version=">=1.92.0"
-dependency "inmath" version="~>1.3.0"
+dependency "i2d-imgui" path="../i2d-imgui"
+dependency "inmath" version="~>1.3.2"
 dependency "cssd" version="0.1.3"
+dependency "niobium" path="../niobium"
 dependency "colors" version="0.0.3"
 
 targetPath "out/"
@@ -23,9 +24,11 @@ configuration "windows" {
 	targetType "library"
 	subConfiguration "i2d-imgui" "dynamic_dynamicCRT"
 
-	preGenerateCommands \
-		"glslang -V -o ./res/shaders/ui.vert.spv ./shaders/ui.vert" \
-		"glslang -V -o ./res/shaders/ui.frag.spv ./shaders/ui.frag"
+	preGenerateCommands "" \
+		"glslang -V -e vertex_main --source-entrypoint main -o ./res/shaders/ui.vert.spv ./shaders/ui.vert" \
+		"glslang -V -e fragment_main --source-entrypoint main -o ./res/shaders/ui.frag.spv ./shaders/ui.frag" \
+		"spirv-link -o res/shaders/ui.spv res/shaders/ui.vert.spv res/shaders/ui.frag.spv" \
+		"del res\\shaders\\ui.vert.spv res\\shaders\\ui.frag.spv"
 }
 
 configuration "linux" {
@@ -33,9 +36,11 @@ configuration "linux" {
 	targetType "library"
 	subConfiguration "i2d-imgui" "dynamic_dynamicCRT"
 
-	preGenerateCommands \
-		"glslang -V -o ./res/shaders/ui.vert.spv ./shaders/ui.vert" \
-		"glslang -V -o ./res/shaders/ui.frag.spv ./shaders/ui.frag"
+	preGenerateCommands "" \
+		"glslang -V -e vertex_main --source-entrypoint main -o ./res/shaders/ui.vert.spv ./shaders/ui.vert" \
+		"glslang -V -e fragment_main --source-entrypoint main -o ./res/shaders/ui.frag.spv ./shaders/ui.frag" \
+		"spirv-link -o res/shaders/ui.spv res/shaders/ui.vert.spv res/shaders/ui.frag.spv" \
+		"rm res/shaders/ui.vert.spv res/shaders/ui.frag.spv"
 }
 
 configuration "macOS" {
@@ -47,6 +52,5 @@ configuration "macOS" {
 	dependency "coregraphics-d" version=">=0.5.2"
 	subConfiguration "i2d-imgui" "dynamic_dynamicCRT"
 
-	preBuildCommands \
-		"cp shaders/ui.metal res/shaders/ui.metal"
+	preBuildCommands "cp shaders/ui.metal res/shaders/ui.metal"
 }

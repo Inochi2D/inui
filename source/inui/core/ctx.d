@@ -6,11 +6,10 @@
     
     Authors: Luna Nielsen
 */
-module inui.core.imgui;
+module inui.core.ctx;
 import inui.core.window;
 import inui.core.fonts;
 import inui.core.utils;
-import inui.core.render;
 import inui.image;
 import i2d.imgui;
 import nulib.math : isFinite;
@@ -21,6 +20,7 @@ import sdl;
 import sdl.misc : SDL_OpenURL;
 import sdl.error : SDL_GetError;
 import sdl.timer : SDL_DelayPrecise;
+import niobium;
 
 import std.stdio : printf;
 
@@ -120,7 +120,7 @@ private:
         igSetCurrentContext(ctx);
         ImGuiViewport* viewport = igGetMainViewport();
         viewport.PlatformHandle = cast(void*)this;
-        viewport.PlatformHandleRaw = window.nativeHandle;
+        viewport.PlatformHandleRaw = window.nativeWindowHandle;
     }
 
     void shutdownPlatform() {
@@ -136,95 +136,85 @@ private:
     //      GL State
     //
     nstring g_RenderName;
-    CommandQueue g_Queue;
-    CommandBuffer g_Cmds;
-    RenderCommandEncoder g_RenderPass;
-    Buffer g_IdxBuffer;
-    Buffer g_VtxBuffer;
-    Buffer g_Uniforms;
-    Sampler g_Sampler;
-    RenderPipeline g_Pipeline;
+    NioDevice g_Device;
+    NioSurface g_Surface;
+    NioCommandQueue g_Queue;
+    NioCommandBuffer g_Cmds;
+    NioRenderCommandEncoder g_RenderPass;
+    NioBuffer g_IdxBuffer;
+    NioBuffer g_VtxBuffer;
+    NioBuffer g_Uniforms;
+    NioSampler g_Sampler;
+    NioRenderPipeline g_Pipeline;
 
     void createDeviceObjects() {
-        g_Queue = window.renderer.createQueue();
-        g_Uniforms = window.renderer.createBuffer(
-            BufferDescriptor(
-                BufferType.uniform, 
-                mat4.sizeof
-            )
-        );
-        g_Sampler = window.renderer.createSampler(
-            SamplerDescriptor(
-                TextureFilter.linear,
-                TextureFilter.linear,
-                TextureWrap.clampToEdge,
-                TextureWrap.clampToEdge,
-                1      
-            )
-        );
+        auto windowSize = window.pxSize;
 
-        g_VtxBuffer = window.renderer.createBuffer(BufferDescriptor(
-            BufferType.vertex,
-            ushort.max * ImDrawVert.sizeof
-        ));
+        // Setup device and queue.
+        g_Device = NioDevice.systemDevices[0];
+        g_Queue = g_Device.createQueue(NioCommandQueueDescriptor(maxCommandBuffers: 32));
 
-        g_IdxBuffer = window.renderer.createBuffer(BufferDescriptor(
-            BufferType.index,
-            ushort.max * ImDrawIdx.sizeof
-        ));
+        // Setup surface
+        version(Windows) g_Surface = NioSurface.createForWindow(window.nativeCompositorHandle, window.nativeWindowHandle);
+        else version(OSX) {
+            import sdl.metal;
 
-        version(OSX) {
-            Shader vertexShader = window.renderer.createShader(
-                ShaderDescriptor(
-                    ShaderStage.vertex, 
-                    cast(ubyte[])import("shaders/ui.metal"), 
-                    "vertex_main", 
-                    1, 
-                    1
-                )
-            );
-            Shader fragmentShader = window.renderer.createShader(
-                ShaderDescriptor(
-                    ShaderStage.fragment, 
-                    cast(ubyte[])import("shaders/ui.metal"), 
-                    "fragment_main", 
-                    1, 
-                    1
-                )
-            );
-        } else {
-            Shader vertexShader = window.renderer.createShader(
-                ShaderDescriptor(
-                    ShaderStage.vertex, 
-                    cast(ubyte[])import("shaders/ui.vert.spv"), 
-                    "main",
-                    0,
-                    1
-                )
-            );
-            Shader fragmentShader = window.renderer.createShader(
-                ShaderDescriptor(
-                    ShaderStage.fragment, 
-                    cast(ubyte[])import("shaders/ui.frag.spv"), 
-                    "main", 
-                    1, 
-                    0
-                )
-            );
+            auto mtlview = SDL_Metal_CreateView(window.windowHandle);
+            g_Surface = NioSurface.createForLayer(SDL_Metal_GetLayer(mtlview));
+        } else version(Posix) {
+            if (window.compositorName == "x11") {
+                g_Surface = NioSurface.createForWindow(window.nativeCompositorHandle, cast(uint)window.nativeWindowHandle);
+            } else {
+                g_Surface = NioSurface.createForWindow(window.nativeCompositorHandle, window.nativeWindowHandle);
+            }
         }
+        g_Surface.device = g_Device;
+        g_Surface.framesInFlight = 2;
+        g_Surface.presentMode = NioPresentMode.vsync;
+        g_Surface.size = NioExtent2D(windowSize.x, windowSize.y);
+        g_Surface.format = NioPixelFormat.bgra8UnormSRGB;
 
-        g_Pipeline = nogc_new!RenderPipeline(RenderPipelineDescriptor(
-            vertexShader,
-            fragmentShader,
-            [
-                VertexBufferDescriptor(0, ImDrawVert.sizeof, [
-                    VertexAttributeDescriptor(0, VertexFormat.FLOAT2),
-                    VertexAttributeDescriptor(8, VertexFormat.FLOAT2),
-                    VertexAttributeDescriptor(16, VertexFormat.UBYTE4_NORM),
-                ])
-            ],
-            [window.renderer.swapchain.textureFormat],
-            TextureFormat.none
+        // Setup UI Shader
+        version(OSX) NioShader shader = g_Device.createShaderFromNativeSource("ui", cast(ubyte[])import("shaders/ui.metal"));
+        else NioShader shader = g_Device.createShaderFromNativeSource("ui", cast(ubyte[])import("shaders/ui.spv"));
+        g_Pipeline = g_Device.createRenderPipeline(NioRenderPipelineDescriptor(
+			vertexFunction: shader.getFunction("vertex_main"),
+			fragmentFunction: shader.getFunction("fragment_main"),
+			vertexDescriptor: NioVertexDescriptor(
+				[NioVertexBindingDescriptor(NioVertexInputRate.perVertex, ImDrawVert.sizeof)],
+				[
+					NioVertexAttributeDescriptor(NioVertexFormat.float2, 0, 0), 
+					NioVertexAttributeDescriptor(NioVertexFormat.float2, 0, 8), 
+					NioVertexAttributeDescriptor(NioVertexFormat.ubyte4Norm, 0, 16)
+				],
+			),
+			colorAttachments: [NioRenderPipelineAttachmentDescriptor(
+				format: g_Surface.format,
+				blending: true,
+                srcColorFactor: NioBlendFactor.srcAlpha,
+                srcAlphaFactor: NioBlendFactor.srcAlpha,
+			)],
+        ));
+        shader.release();
+
+        // Setup texture sampler
+        g_Sampler = g_Device.createSampler(NioSamplerDescriptor());
+
+        // Setup buffers
+        g_Uniforms = g_Device.createBuffer(NioBufferDescriptor(
+            usage: NioBufferUsage.uniformBuffer,
+            storage: NioStorageMode.sharedStorage,
+            size: cast(uint)(mat4.sizeof)
+        ));
+        g_VtxBuffer = g_Device.createBuffer(NioBufferDescriptor(
+            usage: NioBufferUsage.transfer | NioBufferUsage.vertexBuffer,
+            storage: NioStorageMode.privateStorage,
+            size: cast(uint)(ushort.max * ImDrawVert.sizeof)
+        ));
+        g_IdxBuffer = g_Device.createBuffer(NioBufferDescriptor(
+            usage: NioBufferUsage.transfer | NioBufferUsage.indexBuffer,
+            storage: NioStorageMode.privateStorage,
+            size: cast(uint)(ushort.max * ImDrawIdx.sizeof)
         ));
     }
 
@@ -240,14 +230,15 @@ private:
 
         // Setup viewport, orthographic projection matrix
         // Our visible imgui space lies from draw_data.DisplayPos (top left) to draw_data.DisplayPos+data_data.DisplaySize (bottom right). DisplayPos is (0,0) for single viewport apps.
-        g_Uniforms.set([mat4.orthographic01(
+        g_Surface.size = NioExtent2D(cast(uint)fbArea.width, cast(uint)fbArea.height);
+        g_Uniforms.upload([(mat4.orthographic01(
             drawData.DisplayPos.x,
             drawData.DisplayPos.x + drawData.DisplaySize.x,
             drawData.DisplayPos.y + drawData.DisplaySize.y,
             drawData.DisplayPos.y,
-            0, 1
-        ).transposed()]);
-        g_RenderPass.viewport = fbArea;
+            0, 10
+        ) * mat4.translation(-(drawData.DisplaySize.x/2.0), -(drawData.DisplaySize.y/2.0), -1)).transposed()], 0);
+        g_RenderPass.setViewport(NioViewport(fbArea.x, fbArea.y, fbArea.width, fbArea.height, 0, 1));
     }
 
     void render(ImDrawData* drawData) {
@@ -273,17 +264,30 @@ private:
         ); // (1,1) unless using retina display which are often (2,2)
 
         // Fill buffers.
-        if (g_VtxBuffer.size < drawData.TotalVtxCount * ImDrawVert.sizeof)
-            g_VtxBuffer.resize(cast(uint)(drawData.TotalVtxCount * ImDrawVert.sizeof));
-        if (g_IdxBuffer.size < drawData.TotalIdxCount * ImDrawIdx.sizeof)
-            g_IdxBuffer.resize(cast(uint)(drawData.TotalIdxCount * ImDrawIdx.sizeof));
+        if (g_VtxBuffer.size < drawData.TotalVtxCount * ImDrawVert.sizeof) {
+            g_VtxBuffer.release();
+
+            g_VtxBuffer = g_Device.createBuffer(NioBufferDescriptor(
+                usage: NioBufferUsage.transfer | NioBufferUsage.vertexBuffer,
+                storage: NioStorageMode.privateStorage,
+                size: cast(uint)(drawData.TotalVtxCount * ImDrawVert.sizeof)
+            ));
+        }
+        if (g_IdxBuffer.size < drawData.TotalIdxCount * ImDrawIdx.sizeof) {
+            g_IdxBuffer.release();
+            g_IdxBuffer = g_Device.createBuffer(NioBufferDescriptor(
+                usage: NioBufferUsage.transfer | NioBufferUsage.indexBuffer,
+                storage: NioStorageMode.privateStorage,
+                size: cast(uint)(drawData.TotalIdxCount * ImDrawIdx.sizeof)
+            ));
+        }
         
         uint vtxI = 0;
         uint idxI = 0;
         foreach(n; 0..drawData.CmdListsCount) {
             const ImDrawList* cmd_list = drawData.CmdLists[n];
-            g_VtxBuffer.set(cast(void[])cmd_list.VtxBuffer.Data[0..cmd_list.VtxBuffer.Size], vtxI);
-            g_IdxBuffer.set(cast(void[])cmd_list.IdxBuffer.Data[0..cmd_list.IdxBuffer.Size], idxI);
+            g_VtxBuffer.upload(cast(void[])cmd_list.VtxBuffer.Data[0..cmd_list.VtxBuffer.Size], vtxI);
+            g_IdxBuffer.upload(cast(void[])cmd_list.IdxBuffer.Data[0..cmd_list.IdxBuffer.Size], idxI);
             vtxI += (cmd_list.VtxBuffer.Size * ImDrawVert.sizeof);
             idxI += (cmd_list.IdxBuffer.Size * ImDrawIdx.sizeof);
         }
@@ -295,23 +299,22 @@ private:
             }
         }
 
-        window.renderer.flush();
-
-        g_Cmds = g_Queue.newCommandBuffer();
-        if (auto swapchainTexture = g_Cmds.acquireSwapchainTexture()) {
+        if (auto swapchainTexture = g_Surface.next()) {
+            g_Cmds = g_Queue.fetch();
 
             // Setup desired state
-            g_RenderPass = g_Cmds.beginRenderPass(RenderPassDescriptor([
-                    ColorAttachmentDescriptor(swapchainTexture, LoadAction.clear, StoreAction.store, vec4(0, 0, 0, 0))
+            g_RenderPass = g_Cmds.beginRenderPass(NioRenderPassDescriptor(
+                colorAttachments: [
+                    NioColorAttachmentDescriptor(
+                        texture: swapchainTexture.texture, 
+                        loadAction: NioLoadAction.clear, 
+                        storeAction: NioStoreAction.store, 
+                        clearColor: NioColor(0, 0, 0, 1))
                 ]
             ));
 
-            g_RenderPass.setRenderPipeline(g_Pipeline);
-            g_RenderPass.cullMode = CullMode.none;
-            g_RenderPass.srcColorFactor = BlendFactor.srcAlpha;
-            g_RenderPass.srcAlphaFactor = BlendFactor.srcAlpha;
-            g_RenderPass.dstColorFactor = BlendFactor.oneMinusSrcAlpha;
-            g_RenderPass.dstAlphaFactor = BlendFactor.oneMinusSrcAlpha;
+            g_RenderPass.setPipeline(g_Pipeline);
+            g_RenderPass.setCulling(NioCulling.none);
             this.setupRenderState(drawData, fbArea);
 
             // Render command lists
@@ -339,38 +342,37 @@ private:
 
                         if (clipRect.x < fbWidth && clipRect.y < fbHeight && clipRect.z >= 0.0f && clipRect.w >= 0.0f) {
                             // Apply scissor/clipping rectangle
-                            g_RenderPass.scissor = recti(
+                            g_RenderPass.setScissor(NioScissorRect(
                                 cast(int)clipRect.x, 
                                 cast(int)clipRect.y, 
                                 cast(int)(clipRect.z - clipRect.x), 
                                 cast(int)(clipRect.w - clipRect.y)
-                            );
+                            ));
 
                             // Will not validate in Metal.
                             if (pcmd.ElemCount == 0)
                                 continue;
 
-                            Texture2D texture = cast(Texture2D)cast(void*)ImTextureRef_GetTexID(cast(ImTextureRef*)&pcmd.TexRef);
+                            NioTexture texture = cast(NioTexture)cast(void*)ImTextureRef_GetTexID(cast(ImTextureRef*)&pcmd.TexRef);
 
                             // Bind texture, Draw
-                            g_RenderPass.setFragmentTexture(0, texture, g_Sampler);
-                            g_RenderPass.setVertexBuffer(0, g_Uniforms);
-                            g_RenderPass.setVertexBuffer(0, g_VtxBuffer, vtxI);
-                            g_RenderPass.setIndexBuffer(g_IdxBuffer, ImDrawIdx.sizeof == 2 ? IndexType.uint16 : IndexType.uint32, idxI);
-                            g_RenderPass.drawIndexed(pcmd.ElemCount, pcmd.IdxOffset, pcmd.VtxOffset);
+                            g_RenderPass.setFragmentSampler(g_Sampler, 0);
+                            g_RenderPass.setFragmentTexture(texture, 0);
+                            g_RenderPass.setVertexBuffer(g_VtxBuffer, vtxI, 0);
+                            g_RenderPass.setVertexBuffer(g_Uniforms, 0, 1);
+                            g_RenderPass.drawIndexed(NioPrimitive.triangles, g_IdxBuffer, ImDrawIdx.sizeof == 2 ? NioIndexType.u16 : NioIndexType.u32, pcmd.ElemCount, idxI, pcmd.IdxOffset, 1);
                         }
                     }
                 }
-                            
+
                 vtxI += (cmd_list.VtxBuffer.Size * ImDrawVert.sizeof);
                 idxI += (cmd_list.IdxBuffer.Size * ImDrawIdx.sizeof);
             }
 
-            g_RenderPass.end();
-            g_Queue.submit(g_Cmds);
-            g_Queue.awaitCompletion();
-        } else {
-            g_Cmds.cancel();
+            g_RenderPass.endEncoding();
+            g_Cmds.present(swapchainTexture);
+            g_Queue.commit(g_Cmds);
+            g_Cmds.await();
         }
         
         SDL_DelayPrecise(100_000);
@@ -379,21 +381,25 @@ private:
     void updateTexture(ImTextureData* texture) {
         if (texture.Status == ImTextureStatus.WantCreate) {
             void[] pixels = (cast(void*)ImTextureData_GetPixels(texture))[0..ImTextureData_GetSizeInBytes(texture)];
-            Texture2D toUpdate = window.renderer.createTexture(
-                TextureDescriptor(TextureFormat.rgba8Unorm, texture.Width, texture.Height, 1)
-            );
-
-            toUpdate.upload(pixels, 0);
+            NioTexture toUpdate = g_Device.createTexture(NioTextureDescriptor(
+                type: NioTextureType.type2D,
+                format: NioPixelFormat.rgba8UnormSRGB, 
+                storage: NioStorageMode.privateStorage,
+                usage: NioTextureUsage.transfer | NioTextureUsage.sampled,
+                width: texture.Width,
+                height: texture.Height,
+            )).upload(NioRegion3D(0, 0, 0, texture.Width, texture.Height, 1), 0, 0, pixels, 0);
+            
             ImTextureData_SetTexID(texture, cast(ImTextureID)cast(void*)toUpdate);
             ImTextureData_SetStatus(texture, ImTextureStatus.OK);
         } else if (texture.Status == ImTextureStatus.WantUpdates) {
             void[] pixels = (cast(void*)ImTextureData_GetPixels(texture))[0..ImTextureData_GetSizeInBytes(texture)];
-            Texture2D toUpdate = cast(Texture2D)(cast(void*)ImTextureData_GetTexID(texture));
+            NioTexture toUpdate = cast(NioTexture)(cast(void*)ImTextureData_GetTexID(texture));
 
-            toUpdate.upload(pixels, 0);
+            toUpdate.upload(NioRegion3D(0, 0, 0, texture.Width, texture.Height, 1), 0, 0, pixels, 0);
             ImTextureData_SetStatus(texture, ImTextureStatus.OK);
         } else if (texture.Status == ImTextureStatus.WantDestroy && texture.UnusedFrames > 0) {
-            Texture2D toUpdate = cast(Texture2D)(cast(void*)ImTextureData_GetTexID(texture));
+            NioTexture toUpdate = cast(NioTexture)(cast(void*)ImTextureData_GetTexID(texture));
             toUpdate.release();
 
             ImTextureData_SetTexID(texture, 0);

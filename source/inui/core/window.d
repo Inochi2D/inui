@@ -7,7 +7,6 @@
     Authors: Luna Nielsen
 */
 module inui.core.window;
-import inui.core.render;
 import inui.widgets;
 import inmath;
 import nulib;
@@ -164,7 +163,6 @@ private:
 @nogc:
     __gshared weak_vector!NativeWindow windows_;
     SDL_Window* handle;
-    RenderingDevice context_;
     bool closeRequested = false;
     SystemVibrancy vibrancy_;
 
@@ -282,9 +280,31 @@ public:
     @property float sdrWhiteLevel() { return this.getProperty!float(SDL_PROP_WINDOW_SDR_WHITE_LEVEL_FLOAT, 1.0); }
 
     /**
-        The native NativeWindow handle
+        Name of the compositor in use.
     */
-    @property void* nativeHandle() {
+    @property string compositorName() {
+        const(char)* drv = SDL_GetCurrentVideoDriver();
+        return cast(string)drv[0..nu_strlen(drv)];
+    }
+
+    /**
+        The native compositor handle
+    */
+    @property void* nativeCompositorHandle() {
+        version(Windows) return this.getProperty!(void*)(SDL_PROP_WINDOW_WIN32_HINSTANCE_POINTER, null);
+        else version(OSX) return this.getProperty!(void*)(SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, null);
+        else version(iOS) return this.getProperty!(void*)(SDL_PROP_WINDOW_UIKIT_WINDOW_POINTER, null);
+        else version(Posix) {
+            if (auto wldisplay = this.getProperty!(void*)(SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, null))
+                return wldisplay;
+            return cast(void*)this.getProperty!(void*)(SDL_PROP_WINDOW_X11_DISPLAY_POINTER, null);
+        } else static assert(0, "Platform not supported.");
+    }
+
+    /**
+        The native window handle
+    */
+    @property void* nativeWindowHandle() {
         version(Windows) return this.getProperty!(void*)(SDL_PROP_WINDOW_WIN32_HWND_POINTER, null);
         else version(OSX) return this.getProperty!(void*)(SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, null);
         else version(iOS) return this.getProperty!(void*)(SDL_PROP_WINDOW_UIKIT_WINDOW_POINTER, null);
@@ -380,11 +400,6 @@ public:
     @property vec2i position() { return SDL_GetWindowPositionExt(handle); }
 
     /**
-        The renderer Context associated with the window.
-    */
-    @property RenderingDevice renderer() { return context_; }
-
-    /**
         The area of the NativeWindow that's safe for interactive content.
     */
     @property recti safeArea() {
@@ -462,7 +477,6 @@ public:
     this(SDL_Window* handle) {
         assert(handle, "Failed creating NativeWindow handle");
         this.handle = handle;
-        this.context_ = nogc_new!RenderingDevice(handle);
         this.runOsInitHooks();
         
         windows_ ~= this;

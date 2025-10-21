@@ -1,5 +1,5 @@
 module inui.image;
-import inui.core.render.texture;
+import niobium.pixelformat;
 import numem;
 
 /**
@@ -8,7 +8,7 @@ import numem;
 class Image : NuRefCounted {
 private:
 @nogc:
-    TextureFormat format_;
+    NioPixelFormat format_;
     void[] data_;
     uint width_;
     uint height_;
@@ -34,7 +34,7 @@ public:
     /**
         Format of the image.
     */
-    @property TextureFormat format() { return format_; }
+    @property NioPixelFormat format() { return format_; }
 
     /**
         Raw data of the image.
@@ -53,7 +53,7 @@ public:
     /**
         Creates a new empty image.
     */
-    this(TextureFormat format, uint width, uint height) {
+    this(NioPixelFormat format, uint width, uint height) {
         this.format_ = format;
         this.width_ = width;
         this.height_ = height;

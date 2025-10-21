@@ -8,9 +8,8 @@
 */
 module inui.window;
 import std.algorithm.mutation : remove;
-import inui.core.render;
 import inui.core.window;
-import inui.core.imgui;
+import inui.core.ctx;
 import inui.widgets;
 import inmath;
 import numem;
@@ -99,11 +98,6 @@ public:
         The backing native window.
     */
     @property NativeWindow backingWindow() { return backing; }
-
-    /**
-        The backing renderer.
-    */
-    @property RenderingDevice renderer() { return backing.renderer; }
     
     /**
         Whether the window has a vibrancy effect.

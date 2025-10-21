@@ -87,12 +87,13 @@ public:
             result ~= new UIFont("/System/Library/Fonts/SFNS.ttf");
         }
 
+        import std.stdio : writeln;
         auto fontlist = ha.FontCollection.createFromSystem();
         foreach(ha.FontFamily family; fontlist.families) {
             foreach(ref ha.FontFaceInfo info; family.faces) {
                 if (info.outlines != ha.GlyphType.trueType)
                     continue;
-                
+
                 if (info.variable)
                     continue;
                 
