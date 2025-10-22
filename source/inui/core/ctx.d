@@ -130,6 +130,7 @@ private:
         io.BackendPlatformUserData = null;
         io.BackendPlatformName = null;
         io.BackendFlags = ImGuiBackendFlags.None;
+        igDestroyPlatformWindows();
     }
 
     //
@@ -170,7 +171,7 @@ private:
         }
         g_Surface.device = g_Device;
         g_Surface.framesInFlight = 2;
-        g_Surface.presentMode = NioPresentMode.vsync;
+        g_Surface.presentMode = NioPresentMode.mailbox;
         g_Surface.size = NioExtent2D(windowSize.x, windowSize.y);
         g_Surface.format = NioPixelFormat.bgra8UnormSRGB;
 
@@ -439,7 +440,7 @@ private:
         sharedFontLoader.FontBakedInit = (ImFontAtlas* atlas, ImFontConfig* src, ImFontBaked* baked, void* lddata) {
             return true;
         };
-        sharedFontLoader.FontBakedLoadGlyph = (ImFontAtlas* atlas, ImFontConfig* src, ImFontBaked* baked, void* lddata, ImWchar code, ImFontGlyph* dst) {
+        sharedFontLoader.FontBakedLoadGlyph = cast(typeof(ImFontLoader.FontBakedLoadGlyph))(ImFontAtlas* atlas, ImFontConfig* src, ImFontBaked* baked, void* lddata, ImWchar code, ImFontGlyph* dst) {
             GlyphSource gsrc = IGContext.glyphManager.getGlyphSourceFor(code);
             if (!gsrc)
                 return false;
