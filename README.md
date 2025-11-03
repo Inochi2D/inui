@@ -22,5 +22,5 @@ InUI depends on a few libraries to function correctly, the libraries are as foll
 | `MSVC 2022+`   | Used by D runtime                                          |   🪟    |
 | `D 2.111`      | Has patches neccesary to compile for OSX 15.4+             |   All    |
 | `glslang`      | Needed to compile shaders.                                 |  🪟🐧  |
-| `Vulkan 1.2`   | Used by SDL_gpu                                            |  🪟🐧  |
-| `Metal 3`      | Used by SDL_gpu                                            |   🍎    |
+| `Vulkan 1.3`   | Used by Niobium                                            |  🪟🐧  |
+| `Metal 3`      | Used by Niobium                                            |   🍎    |
